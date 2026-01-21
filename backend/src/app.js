@@ -21,10 +21,16 @@ const app = express();
 app.use(cors({
     origin: ['http://localhost:5173', 'http://localhost:5000', 'https://zilling.netlify.app', 'https://billing-software-o1qb.onrender.com', /^https:\/\/.*\.vercel\.app$/],
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
     credentials: true,
     optionsSuccessStatus: 200
 }));
+
+// Security Middleware for Google Login
+app.use((req, res, next) => {
+    res.setHeader('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
+    next();
+});
+
 // app.options('*', cors()); // Enable pre-flight for all routes
 app.use(helmet());
 app.use(express.json());

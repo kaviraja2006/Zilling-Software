@@ -119,15 +119,53 @@ export const ExpenseProvider = ({ children }) => {
 
     const uploadReceipt = async (id, file) => {
         try {
+            // Validate file before upload
+            if (!file) {
+                throw new Error('No file provided');
+            }
+
+            // Validate file type
+            const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'application/pdf'];
+            if (!validTypes.includes(file.type)) {
+                throw new Error('Invalid file type. Only images (JPG, PNG, GIF) and PDF files are allowed.');
+            }
+
+            // Validate file size (5MB)
+            const maxSize = 5 * 1024 * 1024;
+            if (file.size > maxSize) {
+                throw new Error('File size exceeds 5MB limit');
+            }
+
             const response = await services.expenses.uploadReceipt(id, file);
-            // Update the expense with the new receipt URL
-            setExpenses(prev => prev.map(e =>
-                e.id === id ? { ...e, receiptUrl: response.data.receiptUrl } : e
-            ));
+
+            // Update the expense with complete data from response
+            if (response.data.expense) {
+                setExpenses(prev => prev.map(e =>
+                    e.id === id ? response.data.expense : e
+                ));
+            } else {
+                // Fallback to just updating receipt URL if old response format
+                setExpenses(prev => prev.map(e =>
+                    e.id === id ? { ...e, receiptUrl: response.data.receiptUrl } : e
+                ));
+            }
+
             return response.data;
         } catch (error) {
             console.error("Failed to upload receipt", error);
-            throw error;
+
+            // Provide detailed error message
+            let errorMessage = 'Failed to upload receipt';
+
+            if (error.code === 'ERR_NETWORK') {
+                errorMessage = 'Network error: Unable to connect to server. Please check your connection and try again.';
+            } else if (error.response) {
+                errorMessage = error.response.data?.message || error.message || errorMessage;
+            } else if (error.message) {
+                errorMessage = error.message;
+            }
+
+            throw new Error(errorMessage);
         }
     };
 

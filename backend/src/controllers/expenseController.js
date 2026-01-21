@@ -3,7 +3,7 @@ const Expense = require('../models/expenseModel');
 const Joi = require('joi');
 const path = require('path');
 const fs = require('fs');
-const { cloudinary } = require('../config/cloudinary');
+const { cloudinary, uploadToCloudinary } = require('../config/cloudinary');
 
 // @desc    Get all expenses
 // @route   GET /expenses
@@ -224,11 +224,11 @@ const bulkDeleteExpenses = asyncHandler(async (req, res) => {
     // Soft delete: update only expenses owned by the user
     const result = await Expense.updateMany(
         { _id: { $in: ids }, userId: req.user._id },
-        { 
-            $set: { 
-                isDeleted: true, 
-                deletedAt: new Date() 
-            } 
+        {
+            $set: {
+                isDeleted: true,
+                deletedAt: new Date()
+            }
         }
     );
 
@@ -249,7 +249,7 @@ const restoreExpense = asyncHandler(async (req, res) => {
         expense.isDeleted = false;
         expense.deletedAt = null;
         await expense.save();
-        res.json({ 
+        res.json({
             message: 'Expense restored successfully',
             expense: {
                 id: expense._id,
@@ -307,7 +307,6 @@ const exportExpensesToCSV = asyncHandler(async (req, res) => {
 // @route   POST /expenses/:id/receipt
 // @access  Private
 const uploadReceipt = asyncHandler(async (req, res) => {
-    const { uploadToCloudinary, cloudinary } = require('../config/cloudinary');
     const expense = await Expense.findOne({ _id: req.params.id, userId: req.user._id });
 
     if (!expense) {
@@ -320,61 +319,81 @@ const uploadReceipt = asyncHandler(async (req, res) => {
         throw new Error('No file uploaded');
     }
 
-    // Delete old receipt if exists
-    if (expense.receiptUrl) {
-        // Check if it's a local file
-        if (expense.receiptUrl.startsWith('/uploads')) {
-            const oldFilePath = path.join(__dirname, '../../', expense.receiptUrl);
-            if (fs.existsSync(oldFilePath)) {
-                fs.unlink(oldFilePath, (err) => {
-                    if (err) console.error('Failed to delete local file:', err);
-                });
-            }
-        }
-        // Check if it's a Cloudinary URL
-        else if (expense.receiptUrl.includes('cloudinary.com')) {
+    // Delete old receipt from Cloudinary if exists
+    if (expense.receiptUrl && expense.receiptUrl.includes('cloudinary.com')) {
+        try {
+            // Extract public_id from Cloudinary URL
             const urlParts = expense.receiptUrl.split('/');
-            const filenameWithExt = urlParts[urlParts.length - 1];
-            // If it was a PDF/Raw file, the ID might include extension or be different. try best guess
-            // Standard ID heuristic: folder/filename (without ext usually for images, with ext for raw)
-            // But here we set public_id manually for raw files previously. 
-            // Better strategy: try to delete as image first, if fails try raw? 
-            // Or just try both.
-            // Simplified: extract public_id from known structure 'expense-receipts/filename'
+            const uploadIndex = urlParts.findIndex(part => part === 'upload');
+            if (uploadIndex !== -1 && uploadIndex + 2 < urlParts.length) {
+                // Get everything after version (v1234567890)
+                const pathAfterVersion = urlParts.slice(uploadIndex + 2).join('/');
+                // Remove file extension to get public_id
+                const publicId = pathAfterVersion.replace(/\.[^/.]+$/, '');
 
-            // To be safe, we let Cloudinary handle deletion roughly or ignore error for now as improper deletion isn't critical blocker.
-            // But let's try to do it right.
-            const publicId = `expense-receipts/${filenameWithExt.split('.')[0]}`; // Image default
-            const publicIdRaw = `expense-receipts/${filenameWithExt}`; // Raw default
+                // Determine resource type from URL or file extension
+                const isPdf = expense.receiptUrl.toLowerCase().includes('.pdf');
+                const resourceType = isPdf ? 'raw' : 'image';
 
-            // Try destroying as image (default)
-            cloudinary.uploader.destroy(publicId, (err, res) => { });
-            // Try destroying as raw (for PDFs)
-            cloudinary.uploader.destroy(publicIdRaw, { resource_type: 'raw' }, (err, res) => { });
+                // Delete from Cloudinary
+                await cloudinary.uploader.destroy(publicId, { resource_type: resourceType });
+                console.log(`Deleted old receipt: ${publicId}`);
+            }
+        } catch (deleteError) {
+            // Log but don't fail the upload if deletion fails
+            console.error('Failed to delete old receipt from Cloudinary:', deleteError.message);
         }
     }
 
-    // Upload New File
-    // Using resource_type: 'auto' allows Cloudinary to detect PDF and serve it as a document/image
-    // which is better for inline browser viewing than 'raw'.
+    // Force 'image' resource type even for PDFs. 
+    // This treats PDFs as visual documents (standard Cloudinary behavior), 
+    // which avoids strict 'raw' file access permissions that cause 401 errors.
+    const resourceType = 'auto'; // 'auto' is safest, but we rely on Cloudinary's default handling which is usually public for images/PDFs.
+
+    // NOTE: If 'auto' still results in 401, it means the account has strict PDF delivery settings.
+    // We explicitly set access_mode to public.
+
+    // Upload options
     const uploadOptions = {
         folder: 'expense-receipts',
-        resource_type: 'auto',
+        resource_type: 'auto', // Keep auto to support both generic images and PDFs
+        type: 'upload',
+        access_mode: 'public',
+        use_filename: true,
+        unique_filename: true,
     };
 
     try {
         const result = await uploadToCloudinary(req.file.buffer, uploadOptions);
+
         // Save secure URL
         expense.receiptUrl = result.secure_url;
         await expense.save();
 
+        // Return complete expense object for proper state sync
         res.json({
             message: 'Receipt uploaded successfully',
-            receiptUrl: expense.receiptUrl
+            receiptUrl: expense.receiptUrl,
+            expense: {
+                id: expense._id,
+                title: expense.title,
+                amount: expense.amount,
+                category: expense.category,
+                date: expense.date,
+                description: expense.description,
+                paymentMethod: expense.paymentMethod,
+                reference: expense.reference,
+                tags: expense.tags,
+                isRecurring: expense.isRecurring,
+                frequency: expense.frequency,
+                nextDueDate: expense.nextDueDate,
+                receiptUrl: expense.receiptUrl
+            }
         });
     } catch (uploadError) {
         console.error('Cloudinary Upload Error:', uploadError);
-        res.status(500).json({ message: 'Failed to upload receipt to Cloudinary' });
+        res.status(500);
+        throw new Error(`Failed to upload receipt: ${uploadError.message}`);
     }
 });
 

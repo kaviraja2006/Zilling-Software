@@ -126,9 +126,9 @@ const LoginPage = () => {
                                     setIsSubmitting(false);
                                 }
                             }}
-                            onError={() => {
-                                console.log('Login Failed');
-                                setError('Google Login failed. Please try again.');
+                            onError={(error) => {
+                                console.error('Google Login Failed:', error);
+                                setError('Google Login failed. Please check your internet connection or try again.');
                             }}
                         />
                     </div>

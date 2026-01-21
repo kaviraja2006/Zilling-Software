@@ -27,33 +27,16 @@ const userSchema = mongoose.Schema(
             unique: true,
             sparse: true, // Allows multiple null values
         },
-        // Soft delete fields
-        isDeleted: {
-            type: Boolean,
-            default: false
+        googleId: {
+            type: String,
+            unique: true,
+            sparse: true, // Allows multiple null values
         },
-        deletedAt: {
-            type: Date,
-            default: null
-        }
     },
     {
         timestamps: true,
     }
 );
-
-// Query middleware to filter out soft-deleted records
-userSchema.pre('find', function() {
-    this.where({ isDeleted: false });
-});
-
-userSchema.pre('findOne', function() {
-    this.where({ isDeleted: false });
-});
-
-userSchema.pre('countDocuments', function() {
-    this.where({ isDeleted: false });
-});
 
 userSchema.methods.matchPassword = async function (enteredPassword) {
     return await bcrypt.compare(enteredPassword, this.password);

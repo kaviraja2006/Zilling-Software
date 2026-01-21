@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/Table';
-import { Search, Plus, FileText, Edit, Paperclip, Trash2, Download, FileSpreadsheet, MoreHorizontal } from 'lucide-react';
-import ExpenseModal from './ExpenseModal';
+import { Search, Plus, FileText, Edit, Paperclip, Trash2, Download, MoreHorizontal } from 'lucide-react';
+import ExpenseModal from './components/ExpenseModal';
 import DateRangePicker from '../../components/DateRangePicker/DateRangePicker';
 import CategoryFilter from '../../components/CategoryFilter/CategoryFilter';
 import { DropdownMenu, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuContent } from '../../components/ui/DropdownMenu';
@@ -136,9 +136,10 @@ const ExpensesPage = () => {
             if (file) {
                 try {
                     await uploadReceipt(expenseId, file);
-                    alert('Receipt uploaded successfully');
+                    alert('Receipt uploaded successfully!');
                 } catch (error) {
-                    alert('Failed to upload receipt');
+                    console.error('Receipt upload error:', error);
+                    alert(`Failed to upload receipt: ${error.message}`);
                 }
             }
         };
@@ -328,7 +329,7 @@ const ExpensesPage = () => {
                                     <TableCell className="text-center">
                                         {expense.receiptUrl ? (
                                             <a
-                                                href={expense.receiptUrl.startsWith('http') ? expense.receiptUrl : `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}${expense.receiptUrl.startsWith('/') ? '' : '/'}${expense.receiptUrl}`}
+                                                href={expense.receiptUrl}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
                                                 className="inline-flex items-center justify-center p-2 rounded-full hover:bg-blue-50 text-blue-600 transition-colors"
