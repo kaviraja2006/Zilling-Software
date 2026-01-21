@@ -29,7 +29,7 @@ export const printReceipt = (billData, format = '80mm', storeSettings = {}) => {
     }
 
     // --- Format Configurations ---
-    const isThermal = ['80mm', '58mm', '112mm'].includes(format);
+    const isThermal = ['80mm', '58mm', '112mm', '128mm'].includes(format);
 
     // Widths
     const widths = {

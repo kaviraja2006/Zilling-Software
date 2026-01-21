@@ -5,16 +5,19 @@ import { Card, CardContent } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
 import {
     Store, Receipt, Calculator, Printer, Globe, Layout,
-    Save, RotateCcw, Plus, Trash2, Eye, CheckCircle, FileText
+    Save, RotateCcw, Plus, Trash2, Eye, CheckCircle, FileText, User, LogOut
 } from 'lucide-react';
 import { useSettings } from '../../context/SettingsContext';
+import { useAuth } from '../../context/AuthContext';
 import { cn } from '../../lib/utils';
 import services from '../../services/api';
 
 const SettingsPage = () => {
     const { settings, updateSettings, loading } = useSettings();
+    const { user, logout } = useAuth();
     const [activeTab, setActiveTab] = useState('store');
     const [unsavedChanges, setUnsavedChanges] = useState(false);
+    const [showSuccess, setShowSuccess] = useState(false);
 
     // Local state for complex forms (Tax Matrix)
     const [taxGroups, setTaxGroups] = useState([]);
@@ -43,6 +46,8 @@ const SettingsPage = () => {
         try {
             await services.settings.updateSettings(payload);
             setUnsavedChanges(false);
+            setShowSuccess(true);
+            setTimeout(() => setShowSuccess(false), 3000);
             // Re-fetch or Context will auto-update? Assuming context might need refresh.
         } catch (error) {
             console.error("Failed to save settings", error);
@@ -109,6 +114,7 @@ const SettingsPage = () => {
         { id: 'tax', label: 'Tax & GST', icon: Calculator },
         { id: 'invoice', label: 'Invoice Design', icon: Layout },
         { id: 'print', label: 'Printer & Local', icon: Printer },
+        { id: 'account', label: 'Account', icon: User },
     ];
 
     if (!settings) return <div className="p-10 flex justifying-center">Loading Settings...</div>;
@@ -193,7 +199,15 @@ const SettingsPage = () => {
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                     <div className="space-y-2">
                                         <label className="text-sm font-medium">FSSAI License No</label>
-                                        <Input value={settings.store.fssai || ''} onChange={(e) => handleChange('store', 'fssai', e.target.value)} />
+                                        <Input
+                                            value={settings.store.fssai || ''}
+                                            maxLength={14}
+                                            placeholder="14-digit license number"
+                                            onChange={(e) => {
+                                                const val = e.target.value.replace(/\D/g, '').slice(0, 14);
+                                                handleChange('store', 'fssai', val);
+                                            }}
+                                        />
                                     </div>
                                 </div>
                             </CardContent>
@@ -409,6 +423,7 @@ const SettingsPage = () => {
                                             <option value="A5">A5 (Half Page)</option>
                                             <option value="Thermal-3inch">Thermal 3 Inch (80mm)</option>
                                             <option value="Thermal-2inch">Thermal 2 Inch (58mm)</option>
+                                            <option value="112mm">Thermal 112mm</option>
                                         </select>
                                     </div>
                                     <div className="space-y-2">
@@ -426,8 +441,52 @@ const SettingsPage = () => {
                                     </div>
                                     <div className="space-y-2">
                                         <label className="text-sm font-medium">Currency</label>
-                                        <Input value={settings.defaults.currency || ''} onChange={(e) => handleChange('defaults', 'currency', e.target.value)} />
+                                        <select
+                                            className="w-full h-10 rounded-md border border-slate-200 px-3 bg-white text-sm"
+                                            value={settings.defaults.currency || '₹'}
+                                            onChange={(e) => handleChange('defaults', 'currency', e.target.value)}
+                                        >
+                                            <option value="₹">Indian Rupee (₹)</option>
+                                            <option value="$">USA Dollar ($)</option>
+                                        </select>
                                     </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </div>
+                );
+            case 'account':
+                const userName = user?.name || 'User';
+                const userEmail = user?.email || '';
+                const userInitials = userName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+
+                return (
+                    <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
+                        <Card>
+                            <CardContent className="p-6 space-y-6">
+                                <h3 className="text-lg font-semibold text-slate-800 border-b pb-2">Account Details</h3>
+                                <div className="flex items-center gap-4">
+                                    <div className="h-16 w-16 overflow-hidden rounded-full bg-indigo-600 border-4 border-white shadow-md flex items-center justify-center text-white font-bold text-xl">
+                                        {userInitials}
+                                    </div>
+                                    <div>
+                                        <h2 className="text-xl font-bold text-slate-900">{userName}</h2>
+                                        <p className="text-slate-500">{userEmail}</p>
+                                        <Badge className="mt-1 bg-indigo-50 text-indigo-700 border-indigo-100">{user?.role || 'Manager'}</Badge>
+                                    </div>
+                                </div>
+
+                                <div className="pt-4 border-t">
+                                    <h4 className="text-sm font-medium text-slate-700 mb-3">Session Management</h4>
+                                    <Button
+                                        onClick={logout}
+                                        variant="destructive"
+                                        className="w-full sm:w-auto bg-rose-50 text-rose-600 border border-rose-200 hover:bg-rose-100 hover:border-rose-300 shadow-sm"
+                                    >
+                                        <LogOut className="h-4 w-4 mr-2" />
+                                        Log Out
+                                    </Button>
+                                    <p className="text-xs text-slate-400 mt-2">This will end your current session.</p>
                                 </div>
                             </CardContent>
                         </Card>
@@ -489,6 +548,14 @@ const SettingsPage = () => {
                     {renderTabContent()}
                 </div>
             </div>
+
+            {/* Success Toast */}
+            {showSuccess && (
+                <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-emerald-600 text-white px-6 py-3 rounded-full shadow-xl flex items-center gap-2 animate-in slide-in-from-bottom-5 duration-300 z-50">
+                    <CheckCircle className="h-5 w-5" />
+                    <span className="font-medium">Settings saved successfully!</span>
+                </div>
+            )}
         </div>
     );
 };

@@ -1,7 +1,7 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { cn } from '../../lib/utils';
-import { useAuth } from '../../context/AuthContext';
+
 import {
     LayoutDashboard,
     Receipt,
@@ -12,16 +12,10 @@ import {
     Wallet,
     Settings,
     ScanBarcode,
-    LogOut,
     Menu
 } from 'lucide-react';
 
 const Sidebar = ({ isOpen = true, toggleSidebar, isMobile, onCloseMobile }) => {
-    const { user, logout } = useAuth();
-
-    const handleLogout = async () => {
-        await logout();
-    };
     const navItems = [
         { label: 'Dashboard', icon: LayoutDashboard, path: '/' },
         { label: 'Billing', icon: Receipt, path: '/billing' },
@@ -34,9 +28,7 @@ const Sidebar = ({ isOpen = true, toggleSidebar, isMobile, onCloseMobile }) => {
         { label: 'Barcode', icon: ScanBarcode, path: '/barcode' },
     ];
 
-    const userName = user?.name || 'User';
-    const userEmail = user?.email || '';
-    const userInitials = userName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+
 
     return (
         <div className="flex h-full w-full flex-col border-r border-theme bg-card shadow-sm">
@@ -100,36 +92,6 @@ const Sidebar = ({ isOpen = true, toggleSidebar, isMobile, onCloseMobile }) => {
                 ))}
             </nav>
 
-            {/* User / Footer */}
-            <div className={cn("border-t border-theme", isOpen ? "p-4" : "p-2")}>
-                <div className={cn(
-                    "flex items-center transition-all duration-200",
-                    isOpen
-                        ? "gap-3 rounded-lg bg-slate-50 p-3 shadow-inner border border-slate-100"
-                        : "flex-col justify-center gap-2"
-                )}>
-                    <div className="h-10 w-10 flex-shrink-0 overflow-hidden rounded-full bg-primary-main border-2 border-white shadow-sm flex items-center justify-center text-white font-semibold text-sm">
-                        {userInitials || 'U'}
-                    </div>
-                    {isOpen && (
-                        <div className="flex-1 overflow-hidden min-w-0">
-                            <p className="truncate text-sm font-semibold text-body-primary">{userName}</p>
-                            <p className="truncate text-xs text-body-secondary">{userEmail || 'Store Manager'}</p>
-                        </div>
-                    )}
-                    <button
-                        onClick={handleLogout}
-                        className={cn(
-                            "text-slate-400 hover:text-red-600 transition-colors rounded-md hover:bg-red-50 flex-shrink-0",
-                            isOpen ? "p-1.5" : "p-2 hover:bg-transparent"
-                        )}
-                        title="Logout"
-                        aria-label="Logout"
-                    >
-                        <LogOut size={isOpen ? 18 : 20} />
-                    </button>
-                </div>
-            </div>
         </div >
     );
 };
