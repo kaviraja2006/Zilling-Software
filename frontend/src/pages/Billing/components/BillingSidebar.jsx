@@ -23,15 +23,20 @@ const BillingSidebar = ({
     return (
         <div className="w-full lg:w-96 flex flex-col gap-4 h-full">
             {/* Date Block */}
-            <Card
-                className="p-3 bg-white shadow-sm border rounded-lg flex justify-between items-center cursor-pointer hover:border-blue-400 transition-colors group"
-                onClick={() => setIsCalculatorOpen(true)}
-            >
-                <span className="text-sm font-medium text-slate-700">{currentDate}</span>
-                <div className="p-1.5 bg-blue-50 rounded-md group-hover:bg-blue-100 transition-colors">
-                    <Calculator size={18} className="text-blue-600" />
-                </div>
-            </Card>
+            {/* Date & Calculator Block */}
+            <div className="flex gap-2">
+                <Card className="flex-1 p-3 bg-white shadow-sm border rounded-lg flex justify-center items-center">
+                    <span className="text-sm font-bold text-slate-700">{currentDate}</span>
+                </Card>
+                <Button
+                    className="px-4 py-3 bg-white border border-slate-200 hover:border-blue-400 hover:bg-blue-50 text-slate-700 hover:text-blue-600 shadow-sm rounded-lg flex items-center justify-center gap-2 transition-all font-medium min-w-[100px]"
+                    onClick={() => setIsCalculatorOpen(true)}
+                    title="Open Calculator"
+                >
+                    <Calculator size={18} />
+                    <span>Calc</span>
+                </Button>
+            </div>
 
             <CalculatorModal
                 isOpen={isCalculatorOpen}

@@ -276,7 +276,7 @@ const BillingPage = () => {
             const itemPrice = newCart[existingIndex].price || newCart[existingIndex].sellingPrice || 0;
             newCart[existingIndex].total = (newCart[existingIndex].quantity * itemPrice) - (newCart[existingIndex].discount || 0);
         } else {
-            newCart.push({ ...product, quantity: 1, total: price, discount: 0, taxRate: product.taxRate || 0 });
+            newCart.push({ ...product, quantity: 1, total: price, discount: 0, discountPercent: 0, taxRate: product.taxRate || 0 });
         }
 
         updateCurrentBill({ cart: newCart });
@@ -291,8 +291,23 @@ const BillingPage = () => {
         const newCart = currentBill.cart.map(item => {
             const itemId = item.id || item._id;
             const price = item.price || item.sellingPrice || 0;
-            const discount = item.discount || 0;
-            return itemId === id ? { ...item, quantity: newQty, total: (newQty * price) - discount } : item;
+            let discount = item.discount || 0;
+            const discountPercent = item.discountPercent || 0;
+
+            if (itemId === id) {
+                const baseTotal = newQty * price;
+                // Recalculate discount if it's percentage based
+                if (discountPercent > 0) {
+                    discount = (baseTotal * discountPercent) / 100;
+                }
+                return {
+                    ...item,
+                    quantity: newQty,
+                    discount: discount,
+                    total: Math.max(0, baseTotal - discount)
+                };
+            }
+            return item;
         });
         updateCurrentBill({ cart: newCart });
     };
@@ -386,8 +401,23 @@ const BillingPage = () => {
             if (itemId === selectedItemId) {
                 const price = item.price || item.sellingPrice || 0;
                 const baseTotal = item.quantity * price;
-                const discount = isPercent ? (baseTotal * val / 100) : val;
-                return { ...item, discount: discount, total: Math.max(0, baseTotal - discount) };
+                let discount = 0;
+                let discountPercent = 0;
+
+                if (isPercent) {
+                    discountPercent = val;
+                    discount = (baseTotal * val / 100);
+                } else {
+                    discount = val;
+                    discountPercent = 0;
+                }
+
+                return {
+                    ...item,
+                    discount: discount,
+                    discountPercent: discountPercent,
+                    total: Math.max(0, baseTotal - discount)
+                };
             }
             return item;
         });
@@ -662,6 +692,8 @@ const BillingPage = () => {
                 onClose={() => setModals(prev => ({ ...prev, itemDiscount: false }))}
                 onApply={handleApplyItemDiscount}
                 title={`Item Discount - ${currentBill.cart.find(i => (i.id || i._id) === selectedItemId)?.name || 'Unknown'}`}
+                initialValue={currentBill.cart.find(i => (i.id || i._id) === selectedItemId)?.discountPercent || currentBill.cart.find(i => (i.id || i._id) === selectedItemId)?.discount || 0}
+                initialIsPercent={!!currentBill.cart.find(i => (i.id || i._id) === selectedItemId)?.discountPercent}
             />
             <DiscountModal
                 isOpen={modals.billDiscount}

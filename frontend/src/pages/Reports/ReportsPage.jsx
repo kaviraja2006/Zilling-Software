@@ -455,7 +455,7 @@ const ReportsPage = () => {
                     </div>
                 </CardHeader>
                 <CardContent className="p-0">
-                    <div className="overflow-x-auto">
+                    <div className="overflow-x-auto scrollbar-hide">
                         <table className="w-full text-sm text-left">
                             <thead className="bg-slate-50 text-slate-500 font-medium">
                                 <tr>
@@ -487,7 +487,7 @@ const ReportsPage = () => {
     );
 
     return (
-        <div className="min-h-screen bg-slate-50/30 space-y-6 pb-20">
+        <div className="h-[calc(100vh-theme(spacing.16))] overflow-y-auto scrollbar-hide bg-slate-50/30 space-y-6 pb-20">
             {/* Sticky Header */}
             <div className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-slate-200 -mx-6 px-6 py-4 flex justify-between items-center mb-6">
                 <div className="flex items-center gap-4">

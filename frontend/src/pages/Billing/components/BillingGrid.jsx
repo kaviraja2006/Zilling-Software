@@ -16,6 +16,7 @@ const BillingGrid = ({ cart, updateQuantity, removeItem, selectedItemId, onRowCl
                         <TableHead className="w-32 text-center">QTY</TableHead>
                         <TableHead>UNIT</TableHead>
                         <TableHead className="text-right">PRICE/UNIT(₹)<br /><span className="text-xs text-slate-400 font-normal">Without Tax</span></TableHead>
+                        <TableHead className="text-center w-24">DISC %</TableHead>
                         <TableHead className="text-right">DISCOUNT<br />(₹)</TableHead>
                         <TableHead className="text-right">TAX<br />APPLIED(₹)</TableHead>
                         <TableHead className="text-right">TOTAL(₹)</TableHead>
@@ -64,6 +65,13 @@ const BillingGrid = ({ cart, updateQuantity, removeItem, selectedItemId, onRowCl
                                 </TableCell>
                                 <TableCell>{item.unit || 'PCS'}</TableCell>
                                 <TableCell className="text-right font-medium">₹{(item.price || item.sellingPrice || 0).toFixed(2)}</TableCell>
+                                <TableCell className="text-center font-medium text-slate-600">
+                                    {item.discountPercent > 0 ? (
+                                        <span className="bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded text-xs font-bold">
+                                            {item.discountPercent}%
+                                        </span>
+                                    ) : '-'}
+                                </TableCell>
                                 <TableCell className="text-right text-green-600 font-medium">{item.discount > 0 ? `₹${item.discount.toFixed(2)}` : '0.00'}</TableCell>
                                 <TableCell className="text-right text-slate-500">₹{((Math.max(0, (item.price || 0) * item.quantity - (item.discount || 0))) * (item.taxRate || 0) / 100).toFixed(2)}</TableCell>
                                 <TableCell className="text-right font-bold text-lg">₹{item.total.toFixed(2)}</TableCell>
@@ -72,20 +80,11 @@ const BillingGrid = ({ cart, updateQuantity, removeItem, selectedItemId, onRowCl
                                         <Button
                                             variant="ghost"
                                             size="sm"
-                                            className="h-8 w-8 text-blue-600 hover:text-blue-800 hover:bg-blue-50"
-                                            title="Discount"
-                                            onClick={(e) => { e.stopPropagation(); onDiscountClick && onDiscountClick(item.id || item._id); }}
-                                        >
-                                            <Percent size={16} />
-                                        </Button>
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50"
+                                            className="h-9 w-9 text-red-500 hover:text-red-700 hover:bg-red-50"
                                             title="Remove Item"
                                             onClick={(e) => { e.stopPropagation(); removeItem(item.id || item._id); }}
                                         >
-                                            <Trash2 size={16} />
+                                            <Trash2 size={20} />
                                         </Button>
                                     </div>
                                 </TableCell>
@@ -96,6 +95,7 @@ const BillingGrid = ({ cart, updateQuantity, removeItem, selectedItemId, onRowCl
                     {Array.from({ length: Math.max(0, 8 - cart.length) }).map((_, i) => (
                         <TableRow key={`empty-${i}`} className="h-16 hover:bg-transparent border-dashed border-b">
                             <TableCell className="text-slate-200">{cart.length + i + 1}</TableCell>
+                            <TableCell></TableCell>
                             <TableCell></TableCell>
                             <TableCell></TableCell>
                             <TableCell></TableCell>

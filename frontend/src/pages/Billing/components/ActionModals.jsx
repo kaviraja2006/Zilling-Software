@@ -3,17 +3,18 @@ import { Modal } from '../../../components/ui/Modal';
 import { Input } from '../../../components/ui/Input';
 import { Button } from '../../../components/ui/Button';
 
-export const DiscountModal = ({ isOpen, onClose, onApply, title = "Apply Discount", initialValue = 0, isPercentage = false }) => {
+export const DiscountModal = ({ isOpen, onClose, onApply, title = "Apply Discount", initialValue = 0, initialIsPercent = false }) => {
     const [value, setValue] = useState(initialValue);
-    const [mode, setMode] = useState(isPercentage ? 'percent' : 'amount'); // 'percent' or 'amount'
+    const [mode, setMode] = useState(initialIsPercent ? 'percent' : 'amount'); // 'percent' or 'amount'
     const inputRef = useRef(null);
 
     useEffect(() => {
         if (isOpen && inputRef.current) {
             setTimeout(() => inputRef.current.focus(), 100);
             setValue(initialValue);
+            setMode(initialIsPercent ? 'percent' : 'amount');
         }
-    }, [isOpen, initialValue]);
+    }, [isOpen, initialValue, initialIsPercent]);
 
     const handleSubmit = (e) => {
         e.preventDefault();

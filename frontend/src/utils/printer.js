@@ -68,15 +68,15 @@ export const printReceipt = (billData, format = '80mm', storeSettings = {}) => {
         .thermal-totals { border-top: 1px dashed #000; padding-top: 5px; }
         .thermal-row { display: flex; justify-content: space-between; margin-bottom: 2px; }
         
-        /* Sheet (A4/A5) Specifics */
-        .sheet-header { display: flex; justify-content: space-between; margin-bottom: 20px; border-bottom: 2px solid #eee; padding-bottom: 20px; }
-        .sheet-title { font-size: 24px; font-weight: bold; color: #1E3A8A; }
-        .sheet-grid { display: flex; gap: 20px; margin-bottom: 20px; }
+        /* Sheet (A4/A5) Specifics - Compacted */
+        .sheet-header { display: flex; justify-content: space-between; margin-bottom: 5px; border-bottom: 2px solid #eee; padding-bottom: 5px; }
+        .sheet-title { font-size: 20px; font-weight: bold; color: #1E3A8A; margin: 0; }
+        .sheet-grid { display: flex; gap: 20px; margin-bottom: 5px; }
         .sheet-col { flex: 1; }
-        .sheet-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-        .sheet-table th { background: #F1F5F9; padding: 10px; text-align: left; font-weight: bold; border-bottom: 1px solid #CBD5E1; }
-        .sheet-table td { padding: 10px; border-bottom: 1px solid #eee; }
-        .sheet-totals { float: right; width: 40%; }
+        .sheet-table { width: 100%; border-collapse: collapse; margin-bottom: 5px; font-size: 11px; }
+        .sheet-table th { background: #F1F5F9; padding: 4px 8px; text-align: left; font-weight: bold; border-bottom: 1px solid #CBD5E1; }
+        .sheet-table td { padding: 4px 8px; border-bottom: 1px solid #eee; }
+        .sheet-totals { float: right; width: 40%; font-size: 11px; }
         .sheet-total-row { display: flex; justify-content: space-between; padding: 5px 0; }
         .sheet-total-final { font-size: 18px; font-weight: bold; border-top: 2px solid #000; padding-top: 10px; margin-top: 5px; color: #1E3A8A; }
         
@@ -253,7 +253,7 @@ export const printReceipt = (billData, format = '80mm', storeSettings = {}) => {
                 </div>
             </div>
 
-            <div style="margin-top: 50px; border-top: 1px solid #eee; padding-top: 20px; font-size: 12px; color: #64748B;">
+            <div style="margin-top: 10px; border-top: 1px solid #eee; padding-top: 5px; font-size: 10px; color: #64748B;">
                 <div style="display: flex; justify-content: space-between;">
                     <div>
                         <p class="font-bold">Terms & Conditions:</p>
@@ -268,9 +268,8 @@ export const printReceipt = (billData, format = '80mm', storeSettings = {}) => {
                         <p>Authorized Signatory</p>
                     </div>
                 </div>
-                <div class="text-center" style="margin-top: 20px;">
+                <div class="text-center" style="margin-top: 10px;">
                      <p>${store.footer}</p>
-                     <p style="color: #ccc; font-size: 8px;">Debug: ${JSON.stringify(store)}</p>
                 </div>
             </div>
         `;
