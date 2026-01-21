@@ -36,11 +36,33 @@ const productSchema = mongoose.Schema(
             ref: 'User',
             required: true
         },
+        // Soft delete fields
+        isDeleted: {
+            type: Boolean,
+            default: false
+        },
+        deletedAt: {
+            type: Date,
+            default: null
+        }
     },
     {
         timestamps: true,
     }
 );
+
+// Query middleware to filter out soft-deleted records
+productSchema.pre('find', function() {
+    this.where({ isDeleted: false });
+});
+
+productSchema.pre('findOne', function() {
+    this.where({ isDeleted: false });
+});
+
+productSchema.pre('countDocuments', function() {
+    this.where({ isDeleted: false });
+});
 
 // Compound index to ensure SKU is unique per user
 productSchema.index({ sku: 1, userId: 1 }, { unique: true });

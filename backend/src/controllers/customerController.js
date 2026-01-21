@@ -222,7 +222,7 @@ const updateCustomer = asyncHandler(async (req, res) => {
     }
 });
 
-// @desc    Delete a customer
+// @desc    Delete a customer (soft delete)
 // @route   DELETE /customers/:id
 // @access  Private
 const deleteCustomer = asyncHandler(async (req, res) => {
@@ -230,11 +230,41 @@ const deleteCustomer = asyncHandler(async (req, res) => {
     const customer = await Customer.findOne({ _id: req.params.id, userId: req.user._id });
 
     if (customer) {
-        await customer.deleteOne();
+        // Soft delete: mark as deleted instead of removing
+        customer.isDeleted = true;
+        customer.deletedAt = new Date();
+        await customer.save();
         res.json({ message: 'Customer deleted successfully' });
     } else {
         res.status(404);
         throw new Error('Customer not found or unauthorized');
+    }
+});
+
+// @desc    Restore a soft-deleted customer
+// @route   POST /customers/:id/restore
+// @access  Private
+const restoreCustomer = asyncHandler(async (req, res) => {
+    // Find customer including deleted ones
+    const customer = await Customer.findOne({ _id: req.params.id, userId: req.user._id, isDeleted: true });
+
+    if (customer) {
+        customer.isDeleted = false;
+        customer.deletedAt = null;
+        await customer.save();
+        res.json({ 
+            message: 'Customer restored successfully',
+            customer: {
+                id: customer._id,
+                customerId: customer.customerId,
+                fullName: customer.fullName,
+                phone: customer.phone,
+                email: customer.email
+            }
+        });
+    } else {
+        res.status(404);
+        throw new Error('Deleted customer not found or unauthorized');
     }
 });
 
@@ -279,5 +309,6 @@ module.exports = {
     createCustomer,
     updateCustomer,
     deleteCustomer,
+    restoreCustomer,
     searchDuplicates,
 };
