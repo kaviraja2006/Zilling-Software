@@ -49,27 +49,29 @@ const getDashboardStats = asyncHandler(async (req, res) => {
     const dateMatch = buildDateMatch(userId, startDate, endDate);
 
     // Previous Period Logic
-    let prevStartDate, prevEndDate;
+    // Previous Period Logic
+    let prevMatch;
     if (startDate && endDate) {
         const start = new Date(startDate);
         const end = new Date(endDate);
         const duration = end - start;
-        prevEndDate = new Date(start.getTime() - 1);
-        prevStartDate = new Date(prevEndDate.getTime() - duration);
+        const prevEndDate = new Date(start.getTime() - 1);
+        const prevStartDate = new Date(prevEndDate.getTime() - duration);
+        prevMatch = buildDateMatch(userId, prevStartDate.toISOString(), prevEndDate.toISOString());
     } else {
-        const now = new Date();
-        const startOfToday = new Date(now.setHours(0, 0, 0, 0));
-        prevEndDate = new Date(startOfToday.getTime() - 1);
-        prevStartDate = new Date(prevEndDate.getTime() - (24 * 60 * 60 * 1000 * 7)); // Compare to prev week by default
+        // "All Time" case (or no specific range provided)
+        // Previous period for "All Time" is logically 0 or undefined.
+        // We set a match that returns nothing to ensure prev = 0.
+        prevMatch = { _id: new mongoose.Types.ObjectId() }; // Impossible ID match
     }
-    const prevMatch = buildDateMatch(userId, prevStartDate.toISOString(), prevEndDate.toISOString());
 
     // Parallel Aggregation
     const [
-        currentSales, prevSales,
+        currentSalesResult, prevSalesResult,
         currentOrders, prevOrders,
-        currentExpenses, prevExpenses,
-        salesTrend
+        currentExpensesResult, prevExpensesResult,
+        salesTrend,
+        paidOrders
     ] = await Promise.all([
         Invoice.aggregate([{ $match: dateMatch }, { $group: { _id: null, total: { $sum: "$total" } } }]),
         Invoice.aggregate([{ $match: prevMatch }, { $group: { _id: null, total: { $sum: "$total" } } }]),
@@ -77,44 +79,56 @@ const getDashboardStats = asyncHandler(async (req, res) => {
         Invoice.countDocuments(prevMatch),
         Expense.aggregate([{ $match: dateMatch }, { $group: { _id: null, total: { $sum: "$amount" } } }]),
         Expense.aggregate([{ $match: prevMatch }, { $group: { _id: null, total: { $sum: "$amount" } } }]),
-        getDailyTrend(Invoice, dateMatch, 'total')
+        getDailyTrend(Invoice, dateMatch, 'total'),
+        Invoice.countDocuments({ ...dateMatch, status: 'Paid' })
     ]);
+
+    const salesVal = currentSalesResult[0]?.total || 0;
+    const expenseVal = currentExpensesResult[0]?.total || 0;
+    const profitVal = salesVal - expenseVal;
+
+    // Ratios (Out of 100%)
+    // Sales: Profit Margin %
+    const salesRatio = salesVal > 0 ? (profitVal / salesVal) * 100 : 0;
+
+    // Orders: Completion Rate (Paid Orders / Total Orders)
+    const ordersRatio = currentOrders > 0 ? (paidOrders / currentOrders) * 100 : 0;
+
+    // Expenses: Expense Ratio (Expenses / Sales)
+    // If expenses > sales, max at 100 for display safety
+    const expensesRatio = salesVal > 0 ? Math.min(100, (expenseVal / salesVal) * 100) : (expenseVal > 0 ? 100 : 0);
 
     const stats = {
         sales: {
-            value: currentSales[0]?.total || 0,
-            prev: prevSales[0]?.total || 0,
-            change: 0,
+            value: salesVal,
+            prev: prevSalesResult[0]?.total || 0,
+            change: parseFloat(salesRatio.toFixed(1)),
             sparkline: salesTrend
         },
         orders: {
             value: currentOrders || 0,
             prev: prevOrders || 0,
-            change: 0
+            change: parseFloat(ordersRatio.toFixed(1))
         },
         expenses: {
-            value: currentExpenses[0]?.total || 0,
-            prev: prevExpenses[0]?.total || 0,
-            change: 0
+            value: expenseVal,
+            prev: prevExpensesResult[0]?.total || 0,
+            change: parseFloat(expensesRatio.toFixed(1))
         },
         netProfit: {
-            value: (currentSales[0]?.total || 0) - (currentExpenses[0]?.total || 0),
-            prev: (prevSales[0]?.total || 0) - (prevExpenses[0]?.total || 0),
-            change: 0
+            value: profitVal,
+            prev: (prevSalesResult[0]?.total || 0) - (prevExpensesResult[0]?.total || 0),
+            change: parseFloat(salesRatio.toFixed(1)) // Reuse Profit Margin
         },
         aov: {
-            value: currentOrders > 0 ? (currentSales[0]?.total || 0) / currentOrders : 0,
-            prev: prevOrders > 0 ? (prevSales[0]?.total || 0) / prevOrders : 0,
+            value: currentOrders > 0 ? salesVal / currentOrders : 0,
+            prev: prevOrders > 0 ? (prevSalesResult[0]?.total || 0) / prevOrders : 0,
             change: 0
         }
     };
 
-    // Calculate Percent Changes
-    Object.keys(stats).forEach(key => {
-        const { value, prev } = stats[key];
-        if (prev === 0) stats[key].change = value > 0 ? 100 : 0;
-        else stats[key].change = ((value - prev) / prev) * 100;
-    });
+    // No longer calculating trends here, as we are sending specific Ratios calculated above.
+    // Object.keys(stats).forEach... removed.
 
     res.json(stats);
 });

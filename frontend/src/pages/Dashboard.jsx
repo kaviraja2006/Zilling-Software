@@ -31,10 +31,10 @@ import { Modal } from '../components/ui/Modal';
 import useKeyboardShortcuts from '../hooks/useKeyboardShortcuts';
 
 const StatCard = ({ title, value, change, changeType, icon: Icon, color }) => (
-    <Card className="shadow-md hover:shadow-lg transition-shadow border-none">
-        <CardContent className="p-6">
-            <div className="flex items-center justify-between space-x-4">
-                <div className="flex items-center space-x-4">
+    <Card className="shadow-md hover:shadow-lg transition-shadow border-none overflow-hidden h-full">
+        <CardContent className="p-0 h-full">
+            <div className="flex items-stretch h-full">
+                <div className="flex-1 p-6 flex items-center space-x-4">
                     <div className={cn("p-3 rounded-full shadow-sm", color)}>
                         <Icon size={24} className="text-white" />
                     </div>
@@ -44,8 +44,10 @@ const StatCard = ({ title, value, change, changeType, icon: Icon, color }) => (
                     </div>
                 </div>
                 {change && (
-                    <div className={cn("text-xs font-semibold px-2 py-1 rounded-full",
-                        changeType === 'increase' ? "bg-green-100 text-green-700" : "bg-rose-100 text-rose-700"
+                    <div className={cn("w-1/4 flex items-center justify-center font-bold text-base border-l h-auto",
+                        changeType === 'increase'
+                            ? "bg-green-50 text-green-700 border-green-100"
+                            : "bg-rose-50 text-rose-700 border-rose-100"
                     )}>
                         {change}
                     </div>
@@ -58,10 +60,11 @@ const StatCard = ({ title, value, change, changeType, icon: Icon, color }) => (
 const Dashboard = () => {
     const navigate = useNavigate();
     const [statsData, setStatsData] = useState({
-        totalSales: 0,
-        totalOrders: 0,
-        totalCustomers: 0,
-        pendingInvoices: 0
+        sales: { value: 0, change: 0 },
+        orders: { value: 0, change: 0 },
+        expenses: { value: 0, change: 0 },
+        netProfit: { value: 0, change: 0 },
+        aov: { value: 0, change: 0 }
     });
     const [financials, setFinancials] = useState({
         totalExpenses: 0,
@@ -162,33 +165,33 @@ const Dashboard = () => {
     const stats = [
         {
             title: 'Total Sales',
-            value: `₹${(statsData.totalSales || 0).toFixed(2)}`,
-            change: `${(statsData.trends?.sales || 0).toFixed(1)}%`,
-            changeType: (statsData.trends?.sales || 0) >= 0 ? 'increase' : 'decrease',
+            value: `₹${(statsData.sales?.value || 0).toFixed(2)}`,
+            change: `${(statsData.sales?.change || 0).toFixed(1)}%`,
+            changeType: (statsData.sales?.change || 0) >= 0 ? 'increase' : 'decrease',
             icon: IndianRupee,
             color: 'bg-emerald-600',
         },
         {
             title: 'Total Orders',
-            value: statsData.totalOrders ? statsData.totalOrders.toString() : '0',
-            change: `${(statsData.trends?.orders || 0).toFixed(1)}%`,
-            changeType: (statsData.trends?.orders || 0) >= 0 ? 'increase' : 'decrease',
+            value: statsData.orders?.value ? statsData.orders.value.toString() : '0',
+            change: `${(statsData.orders?.change || 0).toFixed(1)}%`,
+            changeType: (statsData.orders?.change || 0) >= 0 ? 'increase' : 'decrease',
             icon: ShoppingBag,
             color: 'bg-blue-600',
         },
         {
             title: 'Net Profit',
             value: `₹${(financials.netProfit || 0).toFixed(2)}`,
-            change: financials.netProfit >= 0 ? '+Profit' : '-Loss',
-            changeType: financials.netProfit >= 0 ? 'increase' : 'decrease',
+            change: `${(statsData.netProfit?.change || 0).toFixed(1)}%`,
+            changeType: (statsData.netProfit?.change || 0) >= 0 ? 'increase' : 'decrease',
             icon: TrendingUp,
             color: financials.netProfit >= 0 ? 'bg-indigo-600' : 'bg-rose-600',
         },
         {
             title: 'Total Expenses',
             value: `₹${(financials.totalExpenses || 0).toFixed(2)}`,
-            change: '-3.1%', // Keep hardcoded or calculate if possible
-            changeType: 'increase', // Green for "Good" (expense reduction) or utilize dynamic if available
+            change: `${(statsData.expenses?.change || 0).toFixed(1)}%`,
+            changeType: (statsData.expenses?.change || 0) > 50 ? 'decrease' : 'increase', // High expense ratio = red (decrease type maps to red in StatCard)
             icon: ArrowDownRight,
             color: 'bg-amber-600',
         },
@@ -284,28 +287,41 @@ const Dashboard = () => {
                     </CardHeader>
                     <CardContent>
                         <div className="space-y-8">
-                            <div className="space-y-2">
-                                <div className="flex justify-between text-sm font-medium">
-                                    <span className="text-emerald-700">Revenue</span>
-                                    <span>₹{(statsData.totalSales || 0).toFixed(2)}</span>
-                                </div>
-                                <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
-                                    <div className="h-full bg-emerald-500 rounded-full" style={{ width: '100%' }}></div>
-                                </div>
-                            </div>
+                            {(() => {
+                                const rev = statsData.sales?.value || 0;
+                                const exp = financials.totalExpenses || 0;
+                                const maxVal = Math.max(rev, exp, 1);
 
-                            <div className="space-y-2">
-                                <div className="flex justify-between text-sm font-medium">
-                                    <span className="text-amber-700">Expenses</span>
-                                    <span>₹{(financials.totalExpenses || 0).toFixed(2)}</span>
-                                </div>
-                                <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
-                                    <div
-                                        className="h-full bg-amber-500 rounded-full"
-                                        style={{ width: `${Math.min(100, (financials.totalExpenses / (statsData.totalSales || 1)) * 100)}%` }}
-                                    ></div>
-                                </div>
-                            </div>
+                                return (
+                                    <>
+                                        <div className="space-y-2">
+                                            <div className="flex justify-between text-sm font-medium">
+                                                <span className="text-emerald-700">Revenue</span>
+                                                <span>₹{rev.toFixed(2)}</span>
+                                            </div>
+                                            <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                                                <div
+                                                    className="h-full bg-emerald-500 rounded-full transition-all duration-500"
+                                                    style={{ width: `${(rev / maxVal) * 100}%` }}
+                                                ></div>
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <div className="flex justify-between text-sm font-medium">
+                                                <span className="text-amber-700">Expenses</span>
+                                                <span>₹{exp.toFixed(2)}</span>
+                                            </div>
+                                            <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                                                <div
+                                                    className="h-full bg-amber-500 rounded-full transition-all duration-500"
+                                                    style={{ width: `${(exp / maxVal) * 100}%` }}
+                                                ></div>
+                                            </div>
+                                        </div>
+                                    </>
+                                );
+                            })()}
 
                             <div className="pt-6 border-t border-slate-100 flex justify-between items-end mt-auto">
                                 <div>
@@ -353,13 +369,12 @@ const Dashboard = () => {
                                             <TableCell className="text-right py-3">{product.quantity}</TableCell>
                                             <TableCell className="text-right font-medium py-3">₹{(product.revenue || 0).toFixed(2)}</TableCell>
                                             <TableCell className="text-right py-3">
-                                                <Badge variant="outline" className={cn(
-                                                    "bg-opacity-50 border-0",
-                                                    (product.marginPercent || 0) > 30 ? "bg-emerald-50 text-emerald-700" :
-                                                        (product.marginPercent || 0) > 10 ? "bg-amber-50 text-amber-700" : "bg-rose-50 text-rose-700"
+                                                <span className={cn(
+                                                    "text-sm font-bold",
+                                                    (product.marginPercent || 0) >= 0 ? "text-emerald-600" : "text-rose-600"
                                                 )}>
-                                                    {(product.marginPercent || 0).toFixed(1)}%
-                                                </Badge>
+                                                    {(product.marginPercent || 0) > 0 ? '+' : ''}{(product.marginPercent || 0).toFixed(1)}%
+                                                </span>
                                             </TableCell>
                                         </TableRow>
                                     )) : (

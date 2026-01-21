@@ -58,25 +58,7 @@ const ProductToolbar = ({
                     ))}
                 </select>
 
-                <div className="h-6 w-px bg-slate-200 mx-1 hidden md:block" />
-
-                {/* Density Toggle */}
-                <div className="flex bg-slate-100 rounded-lg p-1 border border-slate-200">
-                    <button
-                        onClick={() => onViewModeChange('compact')}
-                        className={`p-1.5 rounded-md transition-all ${viewMode === 'compact' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500 hover:text-slate-700'}`}
-                        title="Compact View"
-                    >
-                        <AlignJustify size={16} />
-                    </button>
-                    <button
-                        onClick={() => onViewModeChange('comfortable')}
-                        className={`p-1.5 rounded-md transition-all ${viewMode === 'comfortable' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500 hover:text-slate-700'}`}
-                        title="Comfortable View"
-                    >
-                        <LayoutList size={16} />
-                    </button>
-                </div>
+                {/* Density Toggle Removed */}
             </div>
         </div>
     );
