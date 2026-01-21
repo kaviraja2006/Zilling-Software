@@ -16,6 +16,16 @@ export const ExpenseProvider = ({ children }) => {
     const [expenses, setExpenses] = useState([]);
     const { user, isLoading: authLoading } = useAuth();
 
+    const fetchExpenses = async () => {
+        try {
+            const response = await services.expenses.getAll();
+            setExpenses(response.data);
+        } catch (error) {
+            console.error("Failed to fetch expenses", error);
+            setExpenses([]);
+        }
+    };
+
     useEffect(() => {
         // Only fetch if user is authenticated and auth is not loading
         if (authLoading || !user) {
@@ -25,15 +35,6 @@ export const ExpenseProvider = ({ children }) => {
             return;
         }
 
-        const fetchExpenses = async () => {
-            try {
-                const response = await services.expenses.getAll();
-                setExpenses(response.data);
-            } catch (error) {
-                console.error("Failed to fetch expenses", error);
-                setExpenses([]);
-            }
-        };
         fetchExpenses();
     }, [user, authLoading]);
 
@@ -145,6 +146,7 @@ export const ExpenseProvider = ({ children }) => {
             bulkDeleteExpenses,
             exportToCSV,
             uploadReceipt,
+            refreshExpenses: fetchExpenses,
             stats
         }}>
             {children}

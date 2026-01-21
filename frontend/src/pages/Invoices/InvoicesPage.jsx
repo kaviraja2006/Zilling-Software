@@ -10,6 +10,8 @@ import InvoiceDetailsModal from './InvoiceDetailsModal';
 import { utils, writeFile } from 'xlsx';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuCheckboxItem } from '../../components/ui/DropdownMenu';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
+import { useProducts } from '../../context/ProductContext';
+import { useCustomers } from '../../context/CustomerContext';
 
 const InvoicesPage = () => {
     // --- State ---
@@ -24,6 +26,8 @@ const InvoicesPage = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedIds, setSelectedIds] = useState([]);
     const [refreshTrigger, setRefreshTrigger] = useState(0);
+    const { refreshProducts } = useProducts();
+    const { refreshCustomers } = useCustomers();
 
     // Advanced Features State
     const [savedViews, setSavedViews] = useState([]);
@@ -194,6 +198,9 @@ const InvoicesPage = () => {
                 }
                 setRefreshTrigger(prev => prev + 1);
                 setSelectedIds([]);
+                // Sync other contexts
+                refreshProducts();
+                refreshCustomers();
             } else if (action === 'markPaid') {
                 // Assuming backend supports this or looping
                 // Since bulkUpdate isn't explicit, we loop for now
@@ -243,6 +250,10 @@ const InvoicesPage = () => {
             if (action === 'delete') await services.invoices.delete(id);
             if (action === 'update') await services.invoices.update(id, data);
             setRefreshTrigger(prev => prev + 1);
+            // Sync other contexts
+            refreshProducts();
+            refreshCustomers();
+            
             if (selectedInvoice && selectedInvoice.id === id) {
                 if (action === 'delete') setSelectedInvoice(null);
                 else setSelectedInvoice({ ...selectedInvoice, ...data }); // Optimistic update
@@ -271,7 +282,7 @@ const InvoicesPage = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                 <Card className="p-4 border-none shadow-sm h-48">
                     <p className="text-xs font-semibold text-slate-500 uppercase mb-2">Sales Trend (Weekly)</p>
-                    <ResponsiveContainer width="100%" height="100%">
+                    <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0} debounce={50}>
                         <AreaChart data={trendData}>
                             <defs>
                                 <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
@@ -286,7 +297,7 @@ const InvoicesPage = () => {
                 </Card>
                 <Card className="p-4 border-none shadow-sm h-48">
                     <p className="text-xs font-semibold text-slate-500 uppercase mb-2">Payment Methods</p>
-                    <ResponsiveContainer width="100%" height="100%">
+                    <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0} debounce={50}>
                         <BarChart data={data}>
                             <CartesianGrid strokeDasharray="3 3" vertical={false} />
                             <XAxis dataKey="_id" tick={{ fontSize: 10 }} />

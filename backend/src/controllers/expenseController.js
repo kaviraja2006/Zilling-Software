@@ -355,26 +355,27 @@ const uploadReceipt = asyncHandler(async (req, res) => {
     }
 
     // Upload New File
-    const isPdf = req.file.mimetype === 'application/pdf' || req.file.originalname.toLowerCase().endsWith('.pdf');
-
-    // Explicitly set options for robust handling
+    // Using resource_type: 'auto' allows Cloudinary to detect PDF and serve it as a document/image
+    // which is better for inline browser viewing than 'raw'.
     const uploadOptions = {
         folder: 'expense-receipts',
-        resource_type: isPdf ? 'raw' : 'auto',
-        // For raw files, we explicitly include extension in public_id
-        public_id: isPdf ? `receipt-${Date.now()}-${req.file.originalname}` : undefined,
+        resource_type: 'auto',
     };
 
-    const result = await uploadToCloudinary(req.file.buffer, uploadOptions);
+    try {
+        const result = await uploadToCloudinary(req.file.buffer, uploadOptions);
+        // Save secure URL
+        expense.receiptUrl = result.secure_url;
+        await expense.save();
 
-    // Save secure URL
-    expense.receiptUrl = result.secure_url;
-    await expense.save();
-
-    res.json({
-        message: 'Receipt uploaded successfully',
-        receiptUrl: expense.receiptUrl
-    });
+        res.json({
+            message: 'Receipt uploaded successfully',
+            receiptUrl: expense.receiptUrl
+        });
+    } catch (uploadError) {
+        console.error('Cloudinary Upload Error:', uploadError);
+        res.status(500).json({ message: 'Failed to upload receipt to Cloudinary' });
+    }
 });
 
 module.exports = {

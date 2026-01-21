@@ -264,6 +264,7 @@ const ExpensesPage = () => {
                                 <TableHead>Reference</TableHead>
                                 <TableHead>Tags</TableHead>
                                 <TableHead className="text-right">Amount</TableHead>
+                                <TableHead className="w-12 text-center">Receipt</TableHead>
                                 <TableHead className="w-12"></TableHead>
                             </TableRow>
                         </TableHeader>
@@ -323,6 +324,31 @@ const ExpensesPage = () => {
                                     </TableCell>
                                     <TableCell className="text-right font-bold text-red-600">
                                         -${expense.amount.toFixed(2)}
+                                    </TableCell>
+                                    <TableCell className="text-center">
+                                        {expense.receiptUrl ? (
+                                            <a
+                                                href={expense.receiptUrl.startsWith('http') ? expense.receiptUrl : `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}${expense.receiptUrl.startsWith('/') ? '' : '/'}${expense.receiptUrl}`}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="inline-flex items-center justify-center p-2 rounded-full hover:bg-blue-50 text-blue-600 transition-colors"
+                                                title="View Receipt"
+                                                onClick={(e) => e.stopPropagation()}
+                                            >
+                                                <Paperclip className="h-4 w-4" />
+                                            </a>
+                                        ) : (
+                                            <button
+                                                className="inline-flex items-center justify-center p-2 rounded-full hover:bg-slate-100 text-slate-400 transition-colors"
+                                                title="No Receipt Attached"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleAttachReceipt(expense.id);
+                                                }}
+                                            >
+                                                <Paperclip className="h-4 w-4 opacity-20" />
+                                            </button>
+                                        )}
                                     </TableCell>
                                     <TableCell>
                                         <DropdownMenu>

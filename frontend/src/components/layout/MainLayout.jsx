@@ -53,7 +53,7 @@ const MainLayout = () => {
                     </div>
                 </header>
 
-                <main className="flex-1 overflow-auto p-4 relative">
+                <main className={`flex-1 overflow-auto p-4 relative ${location.pathname.includes('/reports') ? 'scrollbar-hide' : ''}`}>
                     <Outlet />
                 </main>
             </div>

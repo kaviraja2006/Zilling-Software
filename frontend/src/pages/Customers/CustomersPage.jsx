@@ -8,8 +8,9 @@ import { useCustomers } from '../../context/CustomerContext';
 
 const CustomersPage = () => {
     const { customers, addCustomer, updateCustomer, deleteCustomer, loading } = useCustomers();
-    const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+    const [isCustomerDrawerOpen, setIsCustomerDrawerOpen] = useState(false);
     const [selectedCustomer, setSelectedCustomer] = useState(null);
+    const [initialTab, setInitialTab] = useState('details');
     const [searchTerm, setSearchTerm] = useState('');
     const [showFilters, setShowFilters] = useState(false);
     const [filters, setFilters] = useState({
@@ -41,14 +42,16 @@ const CustomersPage = () => {
         return matchesSearch && matchesType && matchesTags && matchesSource;
     });
 
-    const handleEdit = (customer) => {
+    const handleEdit = (customer, tab = 'details') => {
         setSelectedCustomer(customer);
-        setIsDrawerOpen(true);
+        setInitialTab(tab);
+        setIsCustomerDrawerOpen(true);
     };
 
     const handleAddNew = () => {
         setSelectedCustomer(null);
-        setIsDrawerOpen(true);
+        setInitialTab('details');
+        setIsCustomerDrawerOpen(true);
     };
 
     const handleSaveCustomer = async (customerData, addAnother = false) => {
@@ -59,7 +62,7 @@ const CustomersPage = () => {
                 await addCustomer(customerData);
             }
             if (!addAnother) {
-                setIsDrawerOpen(false);
+                setIsCustomerDrawerOpen(false);
             }
         } catch (error) {
             alert('Failed to save customer');
@@ -340,10 +343,11 @@ const CustomersPage = () => {
                                         ))}
                                     </div>
                                 </TableCell>
-                                <TableCell className="text-center">
-                                    <span className="inline-flex items-center justify-center bg-slate-100 text-slate-700 rounded-full px-3 py-1 text-sm font-medium">
-                                        {customer.totalVisits || 0}
-                                    </span>
+                                <TableCell 
+                                    className="text-center text-blue-600 font-medium cursor-pointer hover:underline"
+                                    onClick={() => handleEdit(customer, 'history')}
+                                >
+                                    {customer.totalVisits || 0}
                                 </TableCell>
                                 <TableCell className="text-right font-semibold text-slate-900">
                                     ₹{(customer.totalSpent || 0).toFixed(2)}
@@ -460,10 +464,11 @@ const CustomersPage = () => {
             </div>
 
             <CustomerDrawer
-                isOpen={isDrawerOpen}
-                onClose={() => setIsDrawerOpen(false)}
+                isOpen={isCustomerDrawerOpen}
+                onClose={() => setIsCustomerDrawerOpen(false)}
                 customer={selectedCustomer}
                 onSave={handleSaveCustomer}
+                initialTab={initialTab}
             />
         </div>
     );

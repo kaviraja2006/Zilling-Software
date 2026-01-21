@@ -15,8 +15,10 @@ import services from '../../services/api';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import html2canvas from 'html2canvas';
+import { useSettings } from '../../context/SettingsContext';
 
 const ReportsPage = () => {
+    const { settings } = useSettings();
     // --- State ---
     const [viewMode, setViewMode] = useState('analyst'); // 'owner' | 'analyst'
     const [datePreset, setDatePreset] = useState('thisWeek');
@@ -122,42 +124,74 @@ const ReportsPage = () => {
     // --- Exports ---
     const handleExport = async (type) => {
         const doc = new jsPDF();
-        const title = `Analytics Report (${new Date(dateRange.start).toLocaleDateString()} - ${new Date(dateRange.end).toLocaleDateString()})`;
+        const now = new Date();
+        const reportTitle = type === 'summary' ? "Business Performance Summary" : "Detailed Analytics";
+        const dateRangeStr = `Analytics Report (${new Date(dateRange.start).toLocaleDateString()} - ${new Date(dateRange.end).toLocaleDateString()})`;
+        
+        // --- Header Section ---
+        doc.setFontSize(18);
+        doc.setTextColor(15, 23, 42); // slate-900
+        doc.text(settings.store.name || "Store Analytics", 14, 20);
+        
+        doc.setFontSize(9);
+        doc.setTextColor(100, 116, 139); // slate-500
+        const address = [
+            `${settings.store.address?.street || ''} ${settings.store.address?.area || ''}`,
+            `${settings.store.address?.city || ''} ${settings.store.address?.state || ''} ${settings.store.address?.pincode || ''}`
+        ].filter(s => s.trim()).join(', ');
+        doc.text(address, 14, 26);
+        doc.text(`GSTIN: ${settings.store.gstin || 'N/A'}`, 14, 31);
+        
+        doc.setDrawColor(226, 232, 240); // slate-200
+        doc.line(14, 35, 196, 35);
+        
+        // --- Report Title & Date ---
+        doc.setFontSize(14);
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(15, 23, 42);
+        doc.text(reportTitle, 14, 45);
+        
+        doc.setFontSize(11);
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(51, 65, 85); // slate-700
+        doc.text(dateRangeStr, 14, 52);
+        
+        doc.setFontSize(10);
+        doc.setTextColor(71, 85, 105); // slate-600
+        doc.text(`Exported on: ${now.toLocaleDateString()} at ${now.toLocaleTimeString()}`, 14, 58);
 
         if (type === 'summary') {
-            // Owner Summary PDF
-            doc.setFontSize(20);
-            doc.text("Business Performance Summary", 14, 20);
-            doc.setFontSize(12);
-            doc.text(title, 14, 30);
-
             // Capture Owner View Tiles
             if (printRef.current) {
-                const canvas = await html2canvas(printRef.current);
+                const canvas = await html2canvas(printRef.current, {
+                    scale: 2,
+                    useCORS: true,
+                    logging: false,
+                    backgroundColor: '#ffffff'
+                });
                 const imgData = canvas.toDataURL('image/png');
                 const imgProps = doc.getImageProperties(imgData);
-                const pdfWidth = doc.internal.pageSize.getWidth();
+                const pdfWidth = doc.internal.pageSize.getWidth() - 28;
                 const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
-                doc.addImage(imgData, 'PNG', 0, 40, pdfWidth, pdfHeight);
+                doc.addImage(imgData, 'PNG', 14, 65, pdfWidth, pdfHeight);
             }
-            doc.save('Owner_Summary.pdf');
+            doc.save(`Summary_Report_${now.toISOString().split('T')[0]}.pdf`);
         } else if (type === 'detailed') {
-            // Detailed Table CSV/PDF
-            doc.text("Detailed Analytics", 14, 20);
-            doc.text(title, 14, 30);
-
             autoTable(doc, {
-                startY: 40,
+                startY: 65,
                 head: [['Metric', 'Value', 'Previous', 'Change']],
                 body: [
                     ['Total Sales', formatCurrency(stats.dashboard.sales.value), formatCurrency(stats.dashboard.sales.prev), formatPercent(stats.dashboard.sales.change)],
                     ['Net Profit', formatCurrency(stats.dashboard.netProfit.value), formatCurrency(stats.dashboard.netProfit.prev), formatPercent(stats.dashboard.netProfit.change)],
                     ['Expenses', formatCurrency(stats.dashboard.expenses.value), formatCurrency(stats.dashboard.expenses.prev), formatPercent(stats.dashboard.expenses.change)],
                     ['Orders', stats.dashboard.orders.value, stats.dashboard.orders.prev, formatPercent(stats.dashboard.orders.change)],
-                ]
+                ],
+                headStyles: { fillColor: [79, 70, 229], textColor: 255 }, // indigo-600
+                alternateRowStyles: { fillColor: [248, 250, 252] }, // slate-50
+                margin: { left: 14, right: 14 }
             });
 
-            doc.save('Detailed_Report.pdf');
+            doc.save(`Detailed_Report_${now.toISOString().split('T')[0]}.pdf`);
         }
     };
 
@@ -188,7 +222,7 @@ const ReportsPage = () => {
                 {/* Sparkline (Recharts) */}
                 {metric.sparkline && metric.sparkline.length > 0 && (
                     <div className="h-10 w-full opacity-50">
-                        <ResponsiveContainer width="100%" height="100%">
+                        <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0} debounce={50}>
                             <AreaChart data={metric.sparkline}>
                                 <Area type="monotone" dataKey="value" stroke={isPositive ? "#10b981" : "#f43f5e"} fill="transparent" strokeWidth={2} />
                             </AreaChart>
@@ -261,7 +295,7 @@ const ReportsPage = () => {
             <Card>
                 <CardHeader><CardTitle>Revenue Trend</CardTitle></CardHeader>
                 <CardContent className="h-64">
-                    <ResponsiveContainer width="100%" height="100%">
+                    <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0} debounce={50}>
                         <AreaChart data={stats.salesTrend}>
                             <defs>
                                 <linearGradient id="colorSalesOwner" x1="0" y1="0" x2="0" y2="1">
@@ -330,7 +364,7 @@ const ReportsPage = () => {
                         </div>
                     </CardHeader>
                     <CardContent className="h-80">
-                        <ResponsiveContainer width="100%" height="100%">
+                        <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0} debounce={50}>
                             <AreaChart data={stats.salesTrend}>
                                 <defs>
                                     <linearGradient id="colSal" x1="0" y1="0" x2="0" y2="1">
@@ -353,7 +387,7 @@ const ReportsPage = () => {
                 <Card>
                     <CardHeader><CardTitle>Payment Methods</CardTitle></CardHeader>
                     <CardContent className="h-80 relative">
-                        <ResponsiveContainer width="100%" height="100%">
+                        <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0} debounce={50}>
                             <PieChart>
                                 <Pie
                                     data={stats.paymentMethods}
@@ -418,7 +452,7 @@ const ReportsPage = () => {
                 <Card className="lg:col-span-2">
                     <CardHeader><CardTitle>Product Performance Matrix</CardTitle></CardHeader>
                     <CardContent className="h-64">
-                        <ResponsiveContainer width="100%" height="100%">
+                        <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0} debounce={50}>
                             <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
                                 <CartesianGrid />
                                 <XAxis type="number" dataKey="marginPercent" name="Margin" unit="%" domain={[0, 'auto']} label={{ value: 'Margin %', position: 'insideBottom', offset: -10 }} />
