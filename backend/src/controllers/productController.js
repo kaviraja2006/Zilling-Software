@@ -222,7 +222,7 @@ const updateProduct = asyncHandler(async (req, res) => {
     }
 });
 
-// @desc    Delete a product
+// @desc    Delete a product (soft delete)
 // @route   DELETE /products/:id
 // @access  Private
 const deleteProduct = asyncHandler(async (req, res) => {
@@ -230,11 +230,41 @@ const deleteProduct = asyncHandler(async (req, res) => {
     const product = await Product.findOne({ _id: req.params.id, userId: req.user._id });
 
     if (product) {
-        await product.deleteOne();
+        // Soft delete: mark as deleted instead of removing
+        product.isDeleted = true;
+        product.deletedAt = new Date();
+        await product.save();
         res.json({ message: 'Product deleted successfully' });
     } else {
         res.status(404);
         throw new Error('Product not found or unauthorized');
+    }
+});
+
+// @desc    Restore a soft-deleted product
+// @route   POST /products/:id/restore
+// @access  Private
+const restoreProduct = asyncHandler(async (req, res) => {
+    // Find product including deleted ones
+    const product = await Product.findOne({ _id: req.params.id, userId: req.user._id, isDeleted: true });
+
+    if (product) {
+        product.isDeleted = false;
+        product.deletedAt = null;
+        await product.save();
+        res.json({ 
+            message: 'Product restored successfully',
+            product: {
+                id: product._id,
+                name: product.name,
+                sku: product.sku,
+                price: product.price,
+                stock: product.stock
+            }
+        });
+    } else {
+        res.status(404);
+        throw new Error('Deleted product not found or unauthorized');
     }
 });
 
@@ -302,7 +332,7 @@ module.exports = {
     createProduct,
     updateProduct,
     deleteProduct,
-    deleteProduct,
+    restoreProduct,
     fixIndexes,
     getProductStats
 };

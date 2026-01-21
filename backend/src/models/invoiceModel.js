@@ -68,11 +68,33 @@ const invoiceSchema = mongoose.Schema(
             ref: 'User',
             required: true
         },
+        // Soft delete fields
+        isDeleted: {
+            type: Boolean,
+            default: false
+        },
+        deletedAt: {
+            type: Date,
+            default: null
+        }
     },
     {
         timestamps: true,
     }
 );
+
+// Query middleware to filter out soft-deleted records
+invoiceSchema.pre('find', function() {
+    this.where({ isDeleted: false });
+});
+
+invoiceSchema.pre('findOne', function() {
+    this.where({ isDeleted: false });
+});
+
+invoiceSchema.pre('countDocuments', function() {
+    this.where({ isDeleted: false });
+});
 
 const Invoice = mongoose.model('Invoice', invoiceSchema);
 

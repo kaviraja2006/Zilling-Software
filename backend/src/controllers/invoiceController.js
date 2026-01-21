@@ -401,7 +401,7 @@ const createInvoice = asyncHandler(async (req, res) => {
     });
 });
 
-// @desc    Delete invoice
+// @desc    Delete invoice (soft delete)
 // @route   DELETE /invoices/:id
 // @access  Private
 const deleteInvoice = asyncHandler(async (req, res) => {
@@ -433,7 +433,10 @@ const deleteInvoice = asyncHandler(async (req, res) => {
             }
         }
 
-        await invoice.deleteOne();
+        // Soft delete: mark as deleted instead of removing
+        invoice.isDeleted = true;
+        invoice.deletedAt = new Date();
+        await invoice.save();
         res.json({ message: 'Invoice deleted successfully' });
     } else {
         res.status(404);
@@ -473,12 +476,68 @@ const bulkDeleteInvoices = asyncHandler(async (req, res) => {
                     await customer.save();
                 }
             }
-            await invoice.deleteOne();
+            
+            // Soft delete
+            invoice.isDeleted = true;
+            invoice.deletedAt = new Date();
+            await invoice.save();
         }
     });
 
     await Promise.all(operations);
     res.json({ message: 'Selected invoices deleted successfully' });
+});
+
+// @desc    Restore a soft-deleted invoice
+// @route   POST /invoices/:id/restore
+// @access  Private
+const restoreInvoice = asyncHandler(async (req, res) => {
+    // Find invoice including deleted ones
+    const invoice = await Invoice.findOne({ _id: req.params.id, userId: req.user._id, isDeleted: true });
+
+    if (invoice) {
+        // Deduct stock again (reverse the restoration that happened on delete)
+        for (const item of invoice.items) {
+            const product = await Product.findOne({ _id: item.productId, userId: req.user._id });
+            if (product) {
+                if (product.stock < item.quantity) {
+                    res.status(400);
+                    throw new Error(`Insufficient stock for product: ${product.name}. Available: ${product.stock}, Required: ${item.quantity}`);
+                }
+                product.stock -= item.quantity;
+                await product.save();
+            }
+        }
+
+        // Restore customer stats
+        if (invoice.customerId) {
+            const customer = await Customer.findOne({ _id: invoice.customerId, userId: req.user._id });
+            if (customer) {
+                customer.totalSpent += invoice.total;
+                customer.totalVisits += 1;
+                await customer.save();
+            }
+        }
+
+        // Restore invoice
+        invoice.isDeleted = false;
+        invoice.deletedAt = null;
+        await invoice.save();
+
+        res.json({ 
+            message: 'Invoice restored successfully',
+            invoice: {
+                id: invoice._id,
+                customerName: invoice.customerName,
+                total: invoice.total,
+                date: invoice.date,
+                status: invoice.status
+            }
+        });
+    } else {
+        res.status(404);
+        throw new Error('Deleted invoice not found or unauthorized');
+    }
 });
 
 // Update getInvoiceStats to include payment method breakdown
@@ -529,6 +588,7 @@ module.exports = {
     getInvoiceById,
     createInvoice,
     deleteInvoice,
+    restoreInvoice,
     bulkDeleteInvoices,
     getInvoiceStats,
     updateInvoice

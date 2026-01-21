@@ -5,6 +5,7 @@ const {
     createExpense,
     updateExpense,
     deleteExpense,
+    restoreExpense,
     bulkUpdateExpenses,
     bulkDeleteExpenses,
     exportExpensesToCSV,
@@ -16,6 +17,7 @@ const { upload } = require('../config/cloudinary');
 // Main routes
 router.route('/').get(protect, getExpenses).post(protect, createExpense);
 router.route('/:id').put(protect, updateExpense).delete(protect, deleteExpense);
+router.post('/:id/restore', protect, restoreExpense);
 
 // Bulk operations
 router.post('/bulk-update', protect, bulkUpdateExpenses);

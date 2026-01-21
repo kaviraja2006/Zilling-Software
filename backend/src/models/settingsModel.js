@@ -113,12 +113,34 @@ const settingsSchema = mongoose.Schema(
         },
 
         lastUpdatedBy: { type: String }, // User name/ID
-        lastUpdatedAt: { type: Date }
+        lastUpdatedAt: { type: Date },
+        // Soft delete fields
+        isDeleted: {
+            type: Boolean,
+            default: false
+        },
+        deletedAt: {
+            type: Date,
+            default: null
+        }
     },
     {
         timestamps: true,
     }
 );
+
+// Query middleware to filter out soft-deleted records
+settingsSchema.pre('find', function() {
+    this.where({ isDeleted: false });
+});
+
+settingsSchema.pre('findOne', function() {
+    this.where({ isDeleted: false });
+});
+
+settingsSchema.pre('countDocuments', function() {
+    this.where({ isDeleted: false });
+});
 
 const Settings = mongoose.model('Settings', settingsSchema);
 
