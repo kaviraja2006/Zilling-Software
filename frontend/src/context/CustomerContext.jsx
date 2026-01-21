@@ -17,6 +17,19 @@ export const CustomerProvider = ({ children }) => {
     const [loading, setLoading] = useState(true);
     const { user, isLoading: authLoading } = useAuth();
 
+    const fetchCustomers = async () => {
+        setLoading(true);
+        try {
+            const response = await services.customers.getAll();
+            setCustomers(response.data);
+        } catch (error) {
+            console.error("Failed to fetch customers", error);
+            setCustomers([]);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     useEffect(() => {
         // Only fetch if user is authenticated and auth is not loading
         if (authLoading || !user) {
@@ -27,18 +40,6 @@ export const CustomerProvider = ({ children }) => {
             return;
         }
 
-        const fetchCustomers = async () => {
-            setLoading(true);
-            try {
-                const response = await services.customers.getAll();
-                setCustomers(response.data);
-            } catch (error) {
-                console.error("Failed to fetch customers", error);
-                setCustomers([]);
-            } finally {
-                setLoading(false);
-            }
-        };
         fetchCustomers();
     }, [user, authLoading]);
 
@@ -77,8 +78,14 @@ export const CustomerProvider = ({ children }) => {
     };
 
     return (
-        <CustomerContext.Provider value={{ customers, addCustomer, updateCustomer, deleteCustomer, loading }}>
-            {children}
+        <CustomerContext.Provider value={{
+            customers,
+            addCustomer,
+            updateCustomer,
+            deleteCustomer,
+            refreshCustomers: fetchCustomers,
+            loading
+        }}>    {children}
         </CustomerContext.Provider>
     );
 };

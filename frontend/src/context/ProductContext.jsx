@@ -17,6 +17,19 @@ export const ProductProvider = ({ children }) => {
     const [loading, setLoading] = useState(true);
     const { user, isLoading: authLoading } = useAuth();
 
+    const fetchProducts = async () => {
+        setLoading(true);
+        try {
+            const response = await services.products.getAll();
+            setProducts(response.data);
+        } catch (error) {
+            console.error("Failed to fetch products", error);
+            setProducts([]);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     useEffect(() => {
         // Only fetch if user is authenticated and auth is not loading
         if (authLoading || !user) {
@@ -27,18 +40,6 @@ export const ProductProvider = ({ children }) => {
             return;
         }
 
-        const fetchProducts = async () => {
-            setLoading(true);
-            try {
-                const response = await services.products.getAll();
-                setProducts(response.data);
-            } catch (error) {
-                console.error("Failed to fetch products", error);
-                setProducts([]);
-            } finally {
-                setLoading(false);
-            }
-        };
         fetchProducts();
     }, [user, authLoading]);
 
@@ -167,6 +168,7 @@ export const ProductProvider = ({ children }) => {
             deleteProduct,
             updateStock,
             getProductByBarcode,
+            refreshProducts: fetchProducts,
             loading
         }}>
             {children}

@@ -143,7 +143,7 @@ const ExpenseModal = ({ isOpen, onClose, expense = null }) => {
                 onClose={onClose}
                 title={isEditMode ? 'Edit Expense' : 'Add New Expense'}
             >
-                <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
+                <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-2 scrollbar-hide">
                     {/* Title */}
                     <div className="space-y-2">
                         <label className="text-sm font-medium text-slate-700">
@@ -340,7 +340,7 @@ const ExpenseModal = ({ isOpen, onClose, expense = null }) => {
                                                     <iframe
                                                         src={fullUrl}
                                                         title="Receipt PDF"
-                                                        className="w-full h-full"
+                                                        className="w-full h-full border-0 rounded-md"
                                                     />
                                                 );
                                             }
@@ -350,16 +350,19 @@ const ExpenseModal = ({ isOpen, onClose, expense = null }) => {
                                                     <img
                                                         src={fullUrl}
                                                         alt="Receipt preview"
-                                                        crossOrigin="anonymous"
-                                                        className="w-full h-full object-contain"
+                                                        className="w-full h-full object-contain transition-opacity duration-300"
+                                                        onLoad={(e) => {
+                                                            e.currentTarget.style.opacity = '1';
+                                                        }}
                                                         onError={(e) => {
                                                             e.currentTarget.style.display = 'none';
                                                             e.currentTarget.nextSibling.style.display = 'flex';
                                                         }}
+                                                        style={{ opacity: 0 }}
                                                     />
                                                     <div className="hidden absolute inset-0 flex-col items-center justify-center gap-2 text-slate-400 bg-slate-50">
-                                                        <FileText className="w-12 h-12" />
-                                                        <span className="text-sm">Cannot preview file</span>
+                                                        <ImageIcon className="w-12 h-12 opacity-20" />
+                                                        <span className="text-sm">Preview not available</span>
                                                     </div>
                                                 </>
                                             );

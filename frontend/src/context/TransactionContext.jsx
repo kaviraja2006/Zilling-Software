@@ -20,6 +20,16 @@ export const TransactionProvider = ({ children }) => {
     });
     const { user, isLoading: authLoading } = useAuth();
 
+    const fetchTransactions = async () => {
+        try {
+            const response = await services.invoices.getAll();
+            setTransactions(response.data.data || []);
+        } catch (error) {
+            console.error("Failed to fetch transactions", error);
+            setTransactions([]);
+        }
+    };
+
     useEffect(() => {
         // Only fetch if user is authenticated and auth is not loading
         if (authLoading || !user) {
@@ -29,15 +39,6 @@ export const TransactionProvider = ({ children }) => {
             return;
         }
 
-        const fetchTransactions = async () => {
-            try {
-                const response = await services.invoices.getAll();
-                setTransactions(response.data.data || []);
-            } catch (error) {
-                console.error("Failed to fetch transactions", error);
-                setTransactions([]);
-            }
-        };
         fetchTransactions();
     }, [user, authLoading]);
 
@@ -88,7 +89,8 @@ export const TransactionProvider = ({ children }) => {
             heldBills,
             holdBill,
             deleteHeldBill,
-            deleteTransaction
+            deleteTransaction,
+            refreshTransactions: fetchTransactions
         }}>
             {children}
         </TransactionContext.Provider>

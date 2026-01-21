@@ -6,6 +6,7 @@ import { Input } from '../../components/ui/Input';
 import { Search, X, Settings, Minus, Plus } from 'lucide-react';
 import { useTransactions } from '../../context/TransactionContext';
 import { useProducts } from '../../context/ProductContext';
+import { useCustomers } from '../../context/CustomerContext';
 import BillingGrid from './components/BillingGrid';
 import BillingSidebar from './components/BillingSidebar';
 import BottomFunctionBar from './components/BottomFunctionBar';
@@ -17,7 +18,8 @@ import { useSettings } from '../../context/SettingsContext';
 
 const BillingPage = () => {
     const { addTransaction } = useTransactions();
-    const { products } = useProducts();
+    const { products, refreshProducts } = useProducts();
+    const { refreshCustomers } = useCustomers();
     const { settings } = useSettings();
     const searchInputRef = useRef(null);
 
@@ -478,6 +480,10 @@ const BillingPage = () => {
 
             console.log("Sending Invoice Payload:", payload);
             const savedBill = await addTransaction(payload);
+
+            // Refresh products and customers to update stock and spent totals
+            refreshProducts();
+            refreshCustomers();
 
             // Print the receipt
             console.log("Printing with Store Settings:", settings);

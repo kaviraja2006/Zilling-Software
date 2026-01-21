@@ -13,6 +13,7 @@ const Joi = require('joi');
 const getInvoices = asyncHandler(async (req, res) => {
     const {
         search,
+        customerId,
         startDate,
         endDate,
         status,
@@ -24,6 +25,11 @@ const getInvoices = asyncHandler(async (req, res) => {
     } = req.query;
 
     const query = { userId: req.user._id };
+
+    // Filter by Customer
+    if (customerId) {
+        query.customerId = customerId;
+    }
 
     // Search (ID, Customer Name)
     if (search) {
@@ -135,6 +141,9 @@ const updateInvoice = asyncHandler(async (req, res) => {
         paymentAdd // Object: { amount, method, note }
     } = req.body;
 
+    const oldBalance = invoice.balance || 0;
+    const oldStatus = invoice.status;
+
     if (status) invoice.status = status;
     if (internalNotes !== undefined) invoice.internalNotes = internalNotes;
     if (isLocked !== undefined) invoice.isLocked = isLocked;
@@ -149,12 +158,7 @@ const updateInvoice = asyncHandler(async (req, res) => {
             date: new Date()
         });
 
-        // Auto-update balance/status
         const totalPaid = invoice.payments.reduce((sum, p) => sum + (p.amount || 0), 0);
-        // Note: Initial payment is usually assumed in 'create'. 
-        // If we switch to 'payments' array logic completely, we'd need to migrate.
-        // For now, let's assume 'balance' is manually managed or we deduct from it.
-
         if (invoice.total - totalPaid <= 0) {
             invoice.status = 'Paid';
             invoice.balance = 0;
@@ -164,12 +168,52 @@ const updateInvoice = asyncHandler(async (req, res) => {
         }
     }
 
-    await invoice.save();
+    const savedInvoice = await invoice.save();
 
-    // Update stats if needed (e.g. if status changed to Cancelled, reverse stock?)
-    // TODO: Implement cancel logic if status becomes 'Cancelled' here.
+    // Update Customer Stats if status changed or balance changed
+    if (invoice.customerId) {
+        const customer = await Customer.findOne({ _id: invoice.customerId, userId: req.user._id });
+        if (customer) {
+            // Case 1: Status changed to Cancelled
+            if (status === 'Cancelled' && oldStatus !== 'Cancelled') {
+                customer.totalSpent = Math.max(0, customer.totalSpent - invoice.total);
+                customer.totalVisits = Math.max(0, customer.totalVisits - 1);
+                customer.due = Math.max(0, customer.due - oldBalance);
+                
+                // Restore stock if cancelled
+                for (const item of invoice.items) {
+                    const product = await Product.findOne({ _id: item.productId, userId: req.user._id });
+                    if (product) {
+                        product.stock += item.quantity;
+                        await product.save();
+                    }
+                }
+            } 
+            // Case 2: Status restored from Cancelled
+            else if (oldStatus === 'Cancelled' && status && status !== 'Cancelled') {
+                customer.totalSpent += invoice.total;
+                customer.totalVisits += 1;
+                customer.due += invoice.balance;
 
-    res.json(invoice);
+                // Re-deduct stock if restored from cancelled
+                for (const item of invoice.items) {
+                    const product = await Product.findOne({ _id: item.productId, userId: req.user._id });
+                    if (product) {
+                        product.stock -= item.quantity;
+                        await product.save();
+                    }
+                }
+            }
+            // Case 3: Just a balance change (payment added)
+            else if (invoice.balance !== oldBalance) {
+                customer.due += (invoice.balance - oldBalance);
+            }
+            
+            await customer.save();
+        }
+    }
+
+    res.json(savedInvoice);
 });
 
 
@@ -377,6 +421,7 @@ const createInvoice = asyncHandler(async (req, res) => {
         if (customer) {
             customer.totalSpent += calcTotal;
             customer.totalVisits += 1;
+            customer.due += balance; // Add the remaining balance to customer's due
             await customer.save();
         }
     }
@@ -429,6 +474,7 @@ const deleteInvoice = asyncHandler(async (req, res) => {
             if (customer) {
                 customer.totalSpent = Math.max(0, customer.totalSpent - invoice.total);
                 customer.totalVisits = Math.max(0, customer.totalVisits - 1);
+                customer.due = Math.max(0, customer.due - (invoice.balance || 0));
                 await customer.save();
             }
         }
@@ -473,6 +519,7 @@ const bulkDeleteInvoices = asyncHandler(async (req, res) => {
                 if (customer) {
                     customer.totalSpent = Math.max(0, customer.totalSpent - invoice.total);
                     customer.totalVisits = Math.max(0, customer.totalVisits - 1);
+                    customer.due = Math.max(0, customer.due - (invoice.balance || 0));
                     await customer.save();
                 }
             }
@@ -515,6 +562,7 @@ const restoreInvoice = asyncHandler(async (req, res) => {
             if (customer) {
                 customer.totalSpent += invoice.total;
                 customer.totalVisits += 1;
+                customer.due += (invoice.balance || 0);
                 await customer.save();
             }
         }

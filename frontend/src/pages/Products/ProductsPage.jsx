@@ -4,6 +4,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import { Badge } from '../../components/ui/Badge';
 import { Search, Plus, Download, Upload, MoreHorizontal, Edit, Trash, Filter, ChevronDown, Copy, Eye, MoreVertical, ListChecks, Check } from 'lucide-react';
 import { useProducts } from '../../context/ProductContext';
+import { useSettings } from '../../context/SettingsContext';
 import ProductDrawer from './ProductDrawer';
 
 import ProductStats from './components/ProductStats';
@@ -13,6 +14,7 @@ import { read, utils, writeFile } from 'xlsx';
 
 const ProductsPage = () => {
     const { products, addProduct, addManyProducts, updateProduct, deleteProduct, loading } = useProducts();
+    const { settings } = useSettings();
 
     // UI State
     const [isDrawerOpen, setIsDrawerOpen] = useState(false);
@@ -143,12 +145,68 @@ const ProductsPage = () => {
         setSelectedRows(new Set());
     };
 
-    const handleBulkExport = () => {
+    const handleBulkExport = async () => {
         const selectedProducts = products.filter(p => selectedRows.has(p.id));
-        const ws = utils.json_to_sheet(selectedProducts);
+        const now = new Date();
+        
+        // Prepare Metadata rows
+        const metadata = [
+            [settings.store.name || "Store Inventory"],
+            [
+                `${settings.store.address?.street || ''} ${settings.store.address?.area || ''}`,
+                `${settings.store.address?.city || ''} ${settings.store.address?.state || ''} ${settings.store.address?.pincode || ''}`
+            ].filter(s => s.trim()).join(', '),
+            [`GSTIN: ${settings.store.gstin || 'N/A'}`, `FSSAI: ${settings.store.fssai || 'N/A'}`],
+            [],
+            ["EXPORT DETAILS"],
+            ["Date:", now.toLocaleDateString()],
+            ["Time:", now.toLocaleTimeString()],
+            [],
+            [] // Spacer
+        ];
+
+        // Prepare Data rows
+        // Map the objects to arrays to maintain control over sequence and headers
+        const dataHeaders = [
+            "NAME", "SKU", "BARCODE", "CATEGORY", "BRAND", "PRICE", "STOCK", "UNIT", "STATUS", "CREATED AT"
+        ];
+        
+        const dataRows = selectedProducts.map(p => [
+            p.name,
+            p.sku || '-',
+            p.barcode || '-',
+            p.category || 'Uncategorized',
+            p.brand || '-',
+            p.price,
+            p.stock,
+            p.unit || '-',
+            p.isActive ? 'Active' : 'Inactive',
+            new Date(p.createdAt).toLocaleString()
+        ]);
+
+        const ws = utils.aoa_to_sheet([...metadata, dataHeaders, ...dataRows]);
+        
+        // Add some basic styling or column widths if possible with xlsx (limited in free version)
+        ws['!cols'] = [
+            { wch: 30 }, // Name
+            { wch: 15 }, // SKU
+            { wch: 15 }, // Barcode
+            { wch: 20 }, // Category
+            { wch: 15 }, // Brand
+            { wch: 10 }, // Price
+            { wch: 10 }, // Stock
+            { wch: 10 }, // Unit
+            { wch: 10 }, // Status
+            { wch: 20 }  // Created At
+        ];
+
         const wb = utils.book_new();
-        utils.book_append_sheet(wb, ws, "Selected Products");
-        writeFile(wb, "selected_products.xlsx");
+        utils.book_append_sheet(wb, ws, "Inventory");
+        
+        // Visual filename
+        const filename = `Inventory_Export_${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}.xlsx`;
+        writeFile(wb, filename);
+        
         setSelectedRows(new Set());
     };
 
