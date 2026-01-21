@@ -1,0 +1,110 @@
+@import "tailwindcss";
+
+:root {
+  --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+
+  /* Strict Professional Theme (Trust & Finance) */
+
+  /* Core Colors */
+  --color-primary: #1E3A8A;
+  /* Deep Navy Blue */
+  --color-primary-hover: #1D4ED8;
+  /* Royal Blue */
+
+  --color-bg-app: #F8FAFC;
+  /* Very Light Grey (Main App Area) */
+  --color-bg-card: #FFFFFF;
+  /* White (Cards / Tables) */
+
+  --color-border: #CBD5E1;
+  /* Slate 300 (Borders) */
+
+  /* Text Colors */
+  --color-text-primary: #0F172A;
+  /* Almost Black (Numbers, Data) */
+  --color-text-secondary: #475569;
+  /* Slate Grey (Labels) */
+  --color-text-muted: #94A3B8;
+  /* Disabled */
+
+  /* Status Colors */
+  --color-success: #16A34A;
+  /* Green */
+  --color-warning: #F59E0B;
+  /* Amber */
+  --color-danger: #DC2626;
+  /* Red (Alerts Only) */
+
+  /* Tables */
+  --color-table-header: #E2E8F0;
+  --color-table-row-hover: #F1F5F9;
+  --color-table-border: #CBD5E1;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--color-bg-app);
+  color: var(--color-text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Ensure form elements inherit the font */
+button,
+input,
+optgroup,
+select,
+textarea {
+  font-family: inherit;
+  font-feature-settings: inherit;
+  font-variation-settings: inherit;
+}
+
+/* Custom Utilities for Scrollbars */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Utility classes for using the variables with Tailwind */
+@layer utilities {
+  .bg-primary-main {
+    background-color: var(--color-primary);
+  }
+
+  .bg-primary-hover {
+    background-color: var(--color-primary-hover);
+  }
+
+  .text-primary-main {
+    color: var(--color-primary);
+  }
+
+  .bg-app {
+    background-color: var(--color-bg-app);
+  }
+
+  .bg-card {
+    background-color: var(--color-bg-card);
+  }
+
+  .text-body-primary {
+    color: var(--color-text-primary);
+  }
+
+  .text-body-secondary {
+    color: var(--color-text-secondary);
+  }
+
+  .text-body-muted {
+    color: var(--color-text-muted);
+  }
+
+  .border-theme {
+    border-color: var(--color-border);
+  }
+}
