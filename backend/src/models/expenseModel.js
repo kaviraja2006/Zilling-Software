@@ -36,11 +36,33 @@ const expenseSchema = mongoose.Schema(
             ref: 'User',
             required: true
         },
+        // Soft delete fields
+        isDeleted: {
+            type: Boolean,
+            default: false
+        },
+        deletedAt: {
+            type: Date,
+            default: null
+        }
     },
     {
         timestamps: true,
     }
 );
+
+// Query middleware to filter out soft-deleted records
+expenseSchema.pre('find', function() {
+    this.where({ isDeleted: false });
+});
+
+expenseSchema.pre('findOne', function() {
+    this.where({ isDeleted: false });
+});
+
+expenseSchema.pre('countDocuments', function() {
+    this.where({ isDeleted: false });
+});
 
 const Expense = mongoose.model('Expense', expenseSchema);
 

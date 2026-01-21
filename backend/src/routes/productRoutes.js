@@ -6,6 +6,7 @@ const {
     createProduct,
     updateProduct,
     deleteProduct,
+    restoreProduct,
     fixIndexes,
     getProductStats
 } = require('../controllers/productController');
@@ -17,6 +18,7 @@ router.get('/fix-indexes', fixIndexes);
 router.route('/').get(protect, getProducts).post(protect, createProduct);
 
 router.get('/:id/stats', protect, getProductStats);
+router.post('/:id/restore', protect, restoreProduct);
 
 router
     .route('/:id')

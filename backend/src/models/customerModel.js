@@ -59,6 +59,15 @@ const customerSchema = mongoose.Schema(
             ref: 'User',
             required: true
         },
+        // Soft delete fields
+        isDeleted: {
+            type: Boolean,
+            default: false
+        },
+        deletedAt: {
+            type: Date,
+            default: null
+        }
     },
     {
         timestamps: true,
@@ -77,6 +86,19 @@ customerSchema.set('toObject', { virtuals: true });
 // Indexes for fast duplicate detection
 customerSchema.index({ phone: 1, userId: 1 });
 customerSchema.index({ email: 1, userId: 1 });
+
+// Query middleware to filter out soft-deleted records
+customerSchema.pre('find', function() {
+    this.where({ isDeleted: false });
+});
+
+customerSchema.pre('findOne', function() {
+    this.where({ isDeleted: false });
+});
+
+customerSchema.pre('countDocuments', function() {
+    this.where({ isDeleted: false });
+});
 
 // Pre-save hook to auto-generate customerId
 customerSchema.pre('save', async function () {

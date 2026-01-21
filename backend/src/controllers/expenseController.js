@@ -151,7 +151,7 @@ const updateExpense = asyncHandler(async (req, res) => {
     });
 });
 
-// @desc    Delete an expense
+// @desc    Delete an expense (soft delete)
 // @route   DELETE /expenses/:id
 // @access  Private
 const deleteExpense = asyncHandler(async (req, res) => {
@@ -159,15 +159,11 @@ const deleteExpense = asyncHandler(async (req, res) => {
     const expense = await Expense.findOne({ _id: req.params.id, userId: req.user._id });
 
     if (expense) {
-        // Delete receipt file if exists
-        if (expense.receiptUrl) {
-            const filePath = path.join(__dirname, '../../uploads/receipts', path.basename(expense.receiptUrl));
-            if (fs.existsSync(filePath)) {
-                fs.unlinkSync(filePath);
-            }
-        }
-
-        await expense.deleteOne();
+        // Soft delete: mark as deleted instead of removing
+        // Note: Receipt file is retained for recovery purposes
+        expense.isDeleted = true;
+        expense.deletedAt = new Date();
+        await expense.save();
         res.json({ message: 'Expense deleted successfully' });
     } else {
         res.status(404);
@@ -209,7 +205,7 @@ const bulkUpdateExpenses = asyncHandler(async (req, res) => {
     });
 });
 
-// @desc    Bulk delete expenses
+// @desc    Bulk delete expenses (soft delete)
 // @route   POST /expenses/bulk-delete
 // @access  Private
 const bulkDeleteExpenses = asyncHandler(async (req, res) => {
@@ -225,26 +221,48 @@ const bulkDeleteExpenses = asyncHandler(async (req, res) => {
 
     const { ids } = req.body;
 
-    // Find expenses to delete receipts
-    const expenses = await Expense.find({ _id: { $in: ids }, userId: req.user._id });
-
-    // Delete receipt files
-    expenses.forEach(expense => {
-        if (expense.receiptUrl) {
-            const filePath = path.join(__dirname, '../../uploads/receipts', path.basename(expense.receiptUrl));
-            if (fs.existsSync(filePath)) {
-                fs.unlinkSync(filePath);
-            }
+    // Soft delete: update only expenses owned by the user
+    const result = await Expense.updateMany(
+        { _id: { $in: ids }, userId: req.user._id },
+        { 
+            $set: { 
+                isDeleted: true, 
+                deletedAt: new Date() 
+            } 
         }
-    });
-
-    // Delete only expenses owned by the user
-    const result = await Expense.deleteMany({ _id: { $in: ids }, userId: req.user._id });
+    );
 
     res.json({
         message: 'Expenses deleted successfully',
-        deletedCount: result.deletedCount
+        deletedCount: result.modifiedCount
     });
+});
+
+// @desc    Restore a soft-deleted expense
+// @route   POST /expenses/:id/restore
+// @access  Private
+const restoreExpense = asyncHandler(async (req, res) => {
+    // Find expense including deleted ones
+    const expense = await Expense.findOne({ _id: req.params.id, userId: req.user._id, isDeleted: true });
+
+    if (expense) {
+        expense.isDeleted = false;
+        expense.deletedAt = null;
+        await expense.save();
+        res.json({ 
+            message: 'Expense restored successfully',
+            expense: {
+                id: expense._id,
+                title: expense.title,
+                amount: expense.amount,
+                category: expense.category,
+                date: expense.date
+            }
+        });
+    } else {
+        res.status(404);
+        throw new Error('Deleted expense not found or unauthorized');
+    }
 });
 
 // @desc    Export expenses to CSV
@@ -364,6 +382,7 @@ module.exports = {
     createExpense,
     updateExpense,
     deleteExpense,
+    restoreExpense,
     bulkUpdateExpenses,
     bulkDeleteExpenses,
     exportExpensesToCSV,
