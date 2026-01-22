@@ -339,7 +339,7 @@ const ExpenseModal = ({ isOpen, onClose, expense = null }) => {
                                                     <div className="w-full h-full flex flex-col items-center justify-center gap-3 text-slate-500">
                                                         <FileText className="w-16 h-16 text-red-400" />
                                                         <div className="text-center">
-                                                            <p className="text-sm font-medium">PDF Receipt</p>
+                                                            <p className="text-sm font-medium">upload receipt as image</p>
                                                             <p className="text-xs text-slate-400 mt-1">Click "View Original" to open</p>
                                                         </div>
                                                     </div>
