@@ -3,88 +3,20 @@ const User = require('../models/userModel');
 const generateToken = require('../utils/generateToken');
 const Joi = require('joi');
 
-// @desc    Auth user & get token
+// @desc    Auth user & get token (Deprecated)
 // @route   POST /auth/login
 // @access  Public
 const loginUser = asyncHandler(async (req, res) => {
-    const { email, password } = req.body;
-
-    const schema = Joi.object({
-        email: Joi.string().email().required(),
-        password: Joi.string().required(),
-    });
-
-    const { error } = schema.validate(req.body);
-    if (error) {
-        res.status(400);
-        throw new Error(error.details[0].message);
-    }
-
-    const user = await User.findOne({ email });
-
-    if (user && (await user.matchPassword(password))) {
-        res.json({
-            user: {
-                id: user._id,
-                name: user.name,
-                email: user.email,
-                role: user.role,
-            },
-            token: generateToken(user._id),
-        });
-    } else {
-        res.status(401);
-        throw new Error('Invalid email or password');
-    }
+    res.status(400);
+    throw new Error('Email/Password login is no longer supported. Please use Google Login.');
 });
 
-// @desc    Register a new user
+// @desc    Register a new user (Deprecated)
 // @route   POST /auth/register
 // @access  Public
 const registerUser = asyncHandler(async (req, res) => {
-    const { name, email, password, role } = req.body;
-
-    const schema = Joi.object({
-        name: Joi.string().required(),
-        email: Joi.string().email().required(),
-        password: Joi.string().min(6).required(),
-        role: Joi.string().valid('admin', 'employee').default('employee'),
-    });
-
-    const { error } = schema.validate(req.body);
-    if (error) {
-        res.status(400);
-        throw new Error(error.details[0].message);
-    }
-
-    const userExists = await User.findOne({ email });
-
-    if (userExists) {
-        res.status(400);
-        throw new Error('User already exists');
-    }
-
-    const user = await User.create({
-        name,
-        email,
-        password,
-        role: role || 'employee',
-    });
-
-    if (user) {
-        res.status(201).json({
-            user: {
-                id: user._id,
-                name: user.name,
-                email: user.email,
-                role: user.role,
-            },
-            token: generateToken(user._id),
-        });
-    } else {
-        res.status(400);
-        throw new Error('Invalid user data');
-    }
+    res.status(400);
+    throw new Error('Registration via email/password is no longer supported. Please use Google Login.');
 });
 
 // @desc    Logout user / clear cookie
