@@ -571,7 +571,7 @@ const BillingPage = () => {
             </div>
 
             {/* Main Workspace */}
-            <div className="flex flex-1 overflow-hidden p-2 gap-2 flex-col md:flex-row relative">
+            <div className="flex flex-1 p-2 gap-2 flex-col md:flex-row relative">
 
                 {/* Mobile Tab Toggles */}
                 <div className="md:hidden flex w-full bg-slate-200 rounded-lg p-1 mb-2 shrink-0">
@@ -590,7 +590,7 @@ const BillingPage = () => {
                 </div>
 
                 {/* Left Pane - Search & Grid */}
-                <div className={`flex-1 flex flex-col gap-2 bg-transparent ${mobileTab === 'items' ? 'flex' : 'hidden md:flex'}`}>
+                <div className={`flex-1 flex flex-col gap-2 bg-transparent min-w-0 ${mobileTab === 'items' ? 'flex' : 'hidden md:flex'}`}>
                     {/* Item Search Bar */}
                     <div className="relative z-20">
                         <div className="relative">
@@ -652,7 +652,7 @@ const BillingPage = () => {
                 </div>
 
                 {/* Right Pane - Sidebar */}
-                <div className={`${mobileTab === 'payment' ? 'flex flex-1 overflow-auto' : 'hidden md:block'} w-full md:w-auto`}>
+                <div className={`${mobileTab === 'payment' ? 'flex flex-1 overflow-auto' : 'hidden md:flex'} w-full md:min-w-64 md:max-w-80`}>
                     <BillingSidebar
                         customer={currentBill.customer}
                         onCustomerSearch={(e) => {

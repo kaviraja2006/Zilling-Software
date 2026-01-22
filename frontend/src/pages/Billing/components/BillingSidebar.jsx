@@ -21,7 +21,7 @@ const BillingSidebar = ({
     const [isCalculatorOpen, setIsCalculatorOpen] = useState(false);
 
     return (
-        <div className="w-full lg:w-96 flex flex-col gap-4 h-full">
+        <div className="w-full flex flex-col gap-4 h-full">
             {/* Date Block */}
             {/* Date & Calculator Block */}
             <div className="flex gap-2">
