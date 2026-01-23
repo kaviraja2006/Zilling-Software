@@ -253,7 +253,7 @@ const InvoicesPage = () => {
             // Sync other contexts
             refreshProducts();
             refreshCustomers();
-            
+
             if (selectedInvoice && selectedInvoice.id === id) {
                 if (action === 'delete') setSelectedInvoice(null);
                 else setSelectedInvoice({ ...selectedInvoice, ...data }); // Optimistic update
@@ -633,7 +633,7 @@ const InvoicesPage = () => {
                                                         </TableCell>
                                                     )}
                                                     {visibleColumns.cashier && <TableCell className="text-slate-500 text-xs">{invoice.cashierName || 'Sys'}</TableCell>}
-                                                    {visibleColumns.amount && <TableCell className="text-right font-bold text-slate-900">₹{invoice.total.toFixed(2)}</TableCell>}
+                                                    {visibleColumns.amount && <TableCell className="text-right font-bold text-slate-900">₹{(invoice.total || 0).toFixed(2)}</TableCell>}
                                                     {visibleColumns.tax && <TableCell className="text-right text-slate-500 text-sm">₹{invoice.tax?.toFixed(2) || 0}</TableCell>}
                                                     {visibleColumns.discount && <TableCell className="text-right text-slate-500 text-sm">₹{invoice.discount?.toFixed(2) || 0}</TableCell>}
                                                     {visibleColumns.balance && (
@@ -749,7 +749,7 @@ const InvoicesPage = () => {
                             </div>
                             <div className="flex justify-between items-center mb-2">
                                 <span className="text-sm font-medium text-slate-500">Total Amount</span>
-                                <span className="text-lg font-bold text-slate-900">₹{selectedInvoice.total.toFixed(2)}</span>
+                                <span className="text-lg font-bold text-slate-900">₹{(selectedInvoice.total || 0).toFixed(2)}</span>
                             </div>
                             <div className="flex justify-between items-center">
                                 <span className="text-sm font-medium text-slate-500">Balance Due</span>
@@ -811,7 +811,7 @@ const InvoicesPage = () => {
                                                 <tr key={index}>
                                                     <td className="px-3 py-2 text-left text-slate-800">{item.name}</td>
                                                     <td className="px-3 py-2 text-right text-slate-600">{item.quantity}</td>
-                                                    <td className="px-3 py-2 text-right text-slate-900 font-medium">₹{item.total.toFixed(2)}</td>
+                                                    <td className="px-3 py-2 text-right text-slate-900 font-medium">₹{(item.total || 0).toFixed(2)}</td>
                                                 </tr>
                                             ))
                                         ) : (

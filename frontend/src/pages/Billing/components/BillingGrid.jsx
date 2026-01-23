@@ -9,7 +9,7 @@ const BillingGrid = ({ cart, updateQuantity, removeItem, selectedItemId, onRowCl
         <div className="flex-1 overflow-auto bg-white border rounded-md shadow-sm">
             <Table>
                 <TableHeader>
-                    <TableRow className="bg-slate-100 hover:bg-slate-100 h-10">
+                    <TableRow className="bg-slate-100 hover:bg-slate-100 h-7 text-[10px] font-bold">
                         <TableHead className="w-12">#</TableHead>
                         <TableHead>ITEM CODE</TableHead>
                         <TableHead className="w-1/3">ITEM NAME</TableHead>
@@ -29,7 +29,7 @@ const BillingGrid = ({ cart, updateQuantity, removeItem, selectedItemId, onRowCl
                         return (
                             <TableRow
                                 key={item.id || item._id || index}
-                                className={`cursor-pointer transition-all h-16 ${isSelected ? 'bg-blue-200 border-l-4 border-l-blue-600 shadow-inner' : 'hover:bg-blue-50/50'}`}
+                                className={`cursor-pointer transition-all h-8 ${isSelected ? 'bg-blue-200 border-l-4 border-l-blue-600 shadow-inner' : 'hover:bg-blue-50/50'}`}
                                 onClick={() => onRowClick(item.id || item._id)}
                             >
                                 <TableCell>{index + 1}</TableCell>
@@ -93,7 +93,7 @@ const BillingGrid = ({ cart, updateQuantity, removeItem, selectedItemId, onRowCl
                     })}
                     {/* Empty Rows Fillers to look like POS */}
                     {Array.from({ length: Math.max(0, 8 - cart.length) }).map((_, i) => (
-                        <TableRow key={`empty-${i}`} className="h-16 hover:bg-transparent border-dashed border-b">
+                        <TableRow key={`empty-${i}`} className="h-8 hover:bg-transparent border-dashed border-b">
                             <TableCell className="text-slate-200">{cart.length + i + 1}</TableCell>
                             <TableCell></TableCell>
                             <TableCell></TableCell>

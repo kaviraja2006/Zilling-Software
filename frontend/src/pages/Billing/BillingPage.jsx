@@ -564,13 +564,13 @@ const BillingPage = () => {
     return (
         <div className="flex h-[calc(100vh-theme(spacing.16))] flex-col bg-slate-50">
             {/* Top Bar - Tabs & Tools */}
-            <div className="flex justify-between items-center p-2 bg-white border-b shadow-sm h-12">
-                <div className="flex gap-2 items-end h-full overflow-x-auto">
+            <div className="flex justify-between items-center px-1 bg-white border-b shadow-sm h-8">
+                <div className="flex gap-2 items-end h-full overflow-x-auto overflow-y-hidden no-scrollbar">
                     {activeBills.map(bill => (
                         <div
                             key={bill.id}
                             onClick={() => setActiveBillId(bill.id)}
-                            className={`flex items-center gap-2 px-4 py-2 border-t border-x rounded-t-md text-sm font-bold cursor-pointer select-none relative -bottom-[1px] ${bill.id === activeBillId
+                            className={`flex items-center gap-2 px-3 py-1 border-t border-x rounded-t-md text-xs font-bold cursor-pointer select-none relative -bottom-[1px] ${bill.id === activeBillId
                                 ? 'bg-white border-blue-500 text-blue-600 z-10'
                                 : 'bg-slate-100 border-slate-300 text-slate-500 hover:bg-slate-200'
                                 }`}
@@ -622,7 +622,7 @@ const BillingPage = () => {
                             <Input
                                 ref={searchInputRef}
                                 autoFocus
-                                className="pl-10 h-12 text-lg border-blue-300 focus:border-blue-600 shadow-sm"
+                                className="pl-10 h-8 text-sm border-blue-300 focus:border-blue-600 shadow-sm"
                                 placeholder="Scan or search..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}

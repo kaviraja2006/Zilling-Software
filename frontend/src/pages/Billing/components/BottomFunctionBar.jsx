@@ -13,15 +13,15 @@ const BottomFunctionBar = ({ onFunctionClick }) => {
     ];
 
     return (
-        <div className="grid grid-cols-4 lg:grid-cols-8 gap-2 p-2 bg-slate-100 border-t">
+        <div className="grid grid-cols-4 lg:grid-cols-8 gap-1 p-1 bg-slate-100 border-t items-center">
             {functions.map((fn) => (
                 <Button
                     key={fn.key}
                     variant="outline"
-                    className="flex flex-col items-center justify-center h-12 bg-white hover:bg-blue-50 border-slate-300 shadow-sm"
+                    className="flex flex-col items-center justify-center h-7 bg-white hover:bg-blue-50 border-slate-300 shadow-sm px-1"
                     onClick={() => onFunctionClick(fn.key)}
                 >
-                    <span className="text-xs font-medium text-slate-500">{fn.label} [{fn.key}]</span>
+                    <span className="text-[9px] font-medium text-slate-500 leading-tight">{fn.label} <span className="text-slate-400">[{fn.key}]</span></span>
                 </Button>
             ))}
         </div>
