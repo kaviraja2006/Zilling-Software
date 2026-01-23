@@ -28,8 +28,7 @@ const ExpensesPage = () => {
         const matchesSearch = e.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
             e.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
             (e.paymentMethod && e.paymentMethod.toLowerCase().includes(searchTerm.toLowerCase())) ||
-            (e.reference && e.reference.toLowerCase().includes(searchTerm.toLowerCase())) ||
-            (e.tags && e.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase())));
+            (e.reference && e.reference.toLowerCase().includes(searchTerm.toLowerCase()));
 
         // Date range filter
         let matchesDateRange = true;
@@ -182,13 +181,8 @@ const ExpensesPage = () => {
                     </Button>
 
                     <div className="mt-8 pt-8 border-t border-slate-200">
-                        <p className="text-sm text-slate-600 mb-3">Suggested categories to get started:</p>
+
                         <div className="flex flex-wrap gap-2 justify-center">
-                            {SAMPLE_CATEGORIES.slice(0, 8).map(category => (
-                                <span key={category} className="px-3 py-1 bg-slate-100 text-slate-700 rounded-full text-sm">
-                                    {category}
-                                </span>
-                            ))}
                         </div>
                     </div>
                 </div>
@@ -225,7 +219,7 @@ const ExpensesPage = () => {
                 <div className="relative flex-1">
                     <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                     <Input
-                        placeholder="Search by title, category, payment method, reference, or tags..."
+                        placeholder="Search by title, category, payment method, or reference..."
                         className="pl-10"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
@@ -263,7 +257,6 @@ const ExpensesPage = () => {
                                 <TableHead>Date</TableHead>
                                 <TableHead>Payment Method</TableHead>
                                 <TableHead>Reference</TableHead>
-                                <TableHead>Tags</TableHead>
                                 <TableHead className="text-right">Amount</TableHead>
                                 <TableHead className="w-12 text-center">Receipt</TableHead>
                                 <TableHead className="w-12"></TableHead>
@@ -304,24 +297,6 @@ const ExpensesPage = () => {
                                     </TableCell>
                                     <TableCell className="text-slate-600 text-sm">
                                         {expense.reference || '-'}
-                                    </TableCell>
-                                    <TableCell>
-                                        {expense.tags && expense.tags.length > 0 ? (
-                                            <div className="flex flex-wrap gap-1">
-                                                {expense.tags.slice(0, 2).map((tag, idx) => (
-                                                    <span key={idx} className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-xs">
-                                                        {tag}
-                                                    </span>
-                                                ))}
-                                                {expense.tags.length > 2 && (
-                                                    <span className="px-2 py-0.5 bg-slate-100 text-slate-600 rounded text-xs">
-                                                        +{expense.tags.length - 2}
-                                                    </span>
-                                                )}
-                                            </div>
-                                        ) : (
-                                            <span className="text-slate-400 text-sm">-</span>
-                                        )}
                                     </TableCell>
                                     <TableCell className="text-right font-bold text-red-600">
                                         -${expense.amount.toFixed(2)}

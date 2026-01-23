@@ -8,7 +8,8 @@ const {
     deleteProduct,
     restoreProduct,
     fixIndexes,
-    getProductStats
+    getProductStats,
+    getProductByVariantBarcode
 } = require('../controllers/productController');
 const { protect } = require('../middleware/authMiddleware');
 
@@ -19,6 +20,7 @@ router.route('/').get(protect, getProducts).post(protect, createProduct);
 
 router.get('/:id/stats', protect, getProductStats);
 router.post('/:id/restore', protect, restoreProduct);
+router.get('/barcode/:barcode/variant', protect, getProductByVariantBarcode);
 
 router
     .route('/:id')

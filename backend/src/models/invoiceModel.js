@@ -28,10 +28,17 @@ const invoiceSchema = mongoose.Schema(
                     ref: 'Product',
                     required: true,
                 },
+                variantId: {
+                    type: String,
+                    required: false,
+                },
                 name: { type: String, required: true },
+                variantName: { type: String },
                 quantity: { type: Number, required: true },
                 price: { type: Number, required: true },
                 total: { type: Number, required: true },
+                sku: { type: String },
+                barcode: { type: String },
             },
         ],
         grossTotal: { type: Number },
@@ -84,15 +91,15 @@ const invoiceSchema = mongoose.Schema(
 );
 
 // Query middleware to filter out soft-deleted records
-invoiceSchema.pre('find', function() {
+invoiceSchema.pre('find', function () {
     this.where({ isDeleted: false });
 });
 
-invoiceSchema.pre('findOne', function() {
+invoiceSchema.pre('findOne', function () {
     this.where({ isDeleted: false });
 });
 
-invoiceSchema.pre('countDocuments', function() {
+invoiceSchema.pre('countDocuments', function () {
     this.where({ isDeleted: false });
 });
 

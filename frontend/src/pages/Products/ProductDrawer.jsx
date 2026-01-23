@@ -19,6 +19,11 @@ const AutocompleteInput = ({ label, name, value, onChange, suggestions = [], pla
         }
     }, [value, suggestions]);
 
+    const handleSelect = (item) => {
+        onChange({ target: { name, value: item } });
+        setShowSuggestions(false);
+    };
+
     return (
         <div className="relative space-y-2">
             <label className="text-sm font-medium text-slate-700">{label}</label>
@@ -38,7 +43,10 @@ const AutocompleteInput = ({ label, name, value, onChange, suggestions = [], pla
                             <li
                                 key={item}
                                 className="px-3 py-2 hover:bg-blue-50 cursor-pointer text-sm text-slate-700 hover:text-blue-700 transition-colors"
-                                onClick={() => onChange({ target: { name, value: item } })}
+                                onMouseDown={(e) => {
+                                    e.preventDefault();
+                                    handleSelect(item);
+                                }}
                             >
                                 {item}
                             </li>
@@ -137,11 +145,15 @@ const ProductDrawer = ({ isOpen, onClose, product, onSave, existingUnits, existi
             variants: [
                 ...prev.variants,
                 {
-                    name: 'Variant',
+                    name: '',
                     options: [''],
                     price: prev.price || 0,
                     stock: 0,
-                    sku: prev.sku ? `${prev.sku}-${prev.variants.length + 1}` : ''
+                    sku: prev.sku ? `${prev.sku}-V${prev.variants.length + 1}` : '',
+                    barcode: '',
+                    barcodeType: prev.barcodeType || 'CODE128',
+                    costPrice: prev.costPrice || 0,
+                    attributes: {}
                 }
             ]
         }));
@@ -184,11 +196,27 @@ const ProductDrawer = ({ isOpen, onClose, product, onSave, existingUnits, existi
             }
         }
 
+        // Prepare payload with proper data types - Convert ALL numeric fields to numbers
+        const payload = {
+            ...formData,
+            // Parent product numeric fields
+            price: parseFloat(formData.price) || 0,
+            stock: parseFloat(formData.stock) || 0,
+            taxRate: parseFloat(formData.taxRate) || 0,
+            costPrice: parseFloat(formData.costPrice) || 0,
+            minStock: parseInt(formData.minStock) || 10
+        };
 
-
-        const payload = { ...formData };
         if (!payload.hasVariants) {
             payload.variants = [];
+        } else {
+            // Convert variant string values to numbers for backend validation
+            payload.variants = payload.variants.map(v => ({
+                ...v,
+                price: parseFloat(v.price) || 0,
+                stock: parseInt(v.stock) || 0,
+                costPrice: parseFloat(v.costPrice) || 0
+            }));
         }
 
         try {
@@ -452,19 +480,23 @@ const ProductDrawer = ({ isOpen, onClose, product, onSave, existingUnits, existi
                         {/* Variants UI */}
                         {formData.hasVariants && (
                             <div className="space-y-3">
-                                <div className="flex justify-end">
+                                <div className="flex justify-between items-center">
+                                    <p className="text-sm text-slate-600">Each variant needs a unique barcode or SKU for billing</p>
                                     <Button size="sm" variant="outline" onClick={handleAddVariant}>
                                         <Plus className="h-4 w-4 mr-2" /> Add Variant
                                     </Button>
                                 </div>
-                                <div className="rounded-md border border-slate-200 overflow-hidden">
+                                <div className="rounded-md border border-slate-200 overflow-x-auto">
                                     <Table>
                                         <TableHeader>
                                             <TableRow>
-                                                <TableHead>Variant Name (e.g. Size)</TableHead>
-                                                <TableHead>Price</TableHead>
-                                                <TableHead>Stock</TableHead>
-                                                <TableHead>SKU</TableHead>
+                                                <TableHead className="min-w-[120px]">Name</TableHead>
+                                                <TableHead className="min-w-[100px]">Cost (₹)</TableHead>
+                                                <TableHead className="min-w-[100px]">Price (₹)</TableHead>
+                                                <TableHead className="min-w-[80px]">Stock</TableHead>
+                                                <TableHead className="min-w-[120px]">Barcode</TableHead>
+                                                <TableHead className="min-w-[100px]">Type</TableHead>
+                                                <TableHead className="min-w-[120px]">SKU</TableHead>
                                                 <TableHead className="w-[50px]"></TableHead>
                                             </TableRow>
                                         </TableHeader>
@@ -473,7 +505,7 @@ const ProductDrawer = ({ isOpen, onClose, product, onSave, existingUnits, existi
                                                 <TableRow key={index}>
                                                     <TableCell>
                                                         <Input
-                                                            placeholder="Small, Red, etc."
+                                                            placeholder="e.g., Small, Red"
                                                             value={variant.options[0] || ''}
                                                             onChange={(e) => handleVariantChange(index, 'option', e.target.value)}
                                                         />
@@ -481,6 +513,15 @@ const ProductDrawer = ({ isOpen, onClose, product, onSave, existingUnits, existi
                                                     <TableCell>
                                                         <Input
                                                             type="number"
+                                                            placeholder="0"
+                                                            value={variant.costPrice || ''}
+                                                            onChange={(e) => handleVariantChange(index, 'costPrice', e.target.value)}
+                                                        />
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <Input
+                                                            type="number"
+                                                            placeholder="0"
                                                             value={variant.price}
                                                             onChange={(e) => handleVariantChange(index, 'price', e.target.value)}
                                                         />
@@ -488,13 +529,33 @@ const ProductDrawer = ({ isOpen, onClose, product, onSave, existingUnits, existi
                                                     <TableCell>
                                                         <Input
                                                             type="number"
+                                                            placeholder="0"
                                                             value={variant.stock}
                                                             onChange={(e) => handleVariantChange(index, 'stock', e.target.value)}
                                                         />
                                                     </TableCell>
                                                     <TableCell>
                                                         <Input
-                                                            value={variant.sku}
+                                                            placeholder="Scan or type"
+                                                            value={variant.barcode || ''}
+                                                            onChange={(e) => handleVariantChange(index, 'barcode', e.target.value)}
+                                                        />
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <select
+                                                            value={variant.barcodeType || 'CODE128'}
+                                                            onChange={(e) => handleVariantChange(index, 'barcodeType', e.target.value)}
+                                                            className="w-full rounded-md border border-slate-200 bg-white px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600"
+                                                        >
+                                                            <option value="CODE128">CODE128</option>
+                                                            <option value="EAN13">EAN13</option>
+                                                            <option value="UPC">UPC</option>
+                                                        </select>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <Input
+                                                            placeholder="Auto-generated"
+                                                            value={variant.sku || ''}
                                                             onChange={(e) => handleVariantChange(index, 'sku', e.target.value)}
                                                         />
                                                     </TableCell>
@@ -512,7 +573,7 @@ const ProductDrawer = ({ isOpen, onClose, product, onSave, existingUnits, existi
                                             ))}
                                             {formData.variants.length === 0 && (
                                                 <TableRow>
-                                                    <TableCell colSpan={5} className="text-center py-8 text-slate-500">
+                                                    <TableCell colSpan={8} className="text-center py-8 text-slate-500">
                                                         No variants added. Click "Add Variant" to start.
                                                     </TableCell>
                                                 </TableRow>
@@ -543,7 +604,11 @@ const ProductDrawer = ({ isOpen, onClose, product, onSave, existingUnits, existi
                                         <li
                                             key={u}
                                             className="px-3 py-2 hover:bg-blue-50 cursor-pointer text-sm text-slate-700 hover:text-blue-700 transition-colors"
-                                            onClick={() => setFormData(prev => ({ ...prev, unit: u }))}
+                                            onMouseDown={(e) => {
+                                                e.preventDefault();
+                                                setFormData(prev => ({ ...prev, unit: u }));
+                                                setShowUnitSuggestions(false);
+                                            }}
                                         >
                                             {u}
                                         </li>

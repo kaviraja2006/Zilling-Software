@@ -25,11 +25,22 @@ const productSchema = mongoose.Schema(
         expiryDate: { type: Date },
         isActive: { type: Boolean, default: true },
         variants: [{
-            name: { type: String }, // e.g., "Size", "Color"
-            options: [{ type: String }], // e.g., ["S", "M", "L"]
-            price: { type: Number },
-            stock: { type: Number },
-            sku: { type: String }
+            name: { type: String },
+            options: [{ type: String }],
+            price: { type: Number, required: true },
+            stock: { type: Number, required: true, default: 0 },
+            sku: { type: String },
+            barcode: { type: String },
+            barcodeType: {
+                type: String,
+                enum: ['CODE128', 'EAN13', 'UPC'],
+                default: 'CODE128'
+            },
+            costPrice: { type: Number, default: 0 },
+            attributes: {
+                type: Map,
+                of: String
+            }
         }],
         userId: {
             type: mongoose.Schema.Types.ObjectId,
@@ -52,15 +63,15 @@ const productSchema = mongoose.Schema(
 );
 
 // Query middleware to filter out soft-deleted records
-productSchema.pre('find', function() {
+productSchema.pre('find', function () {
     this.where({ isDeleted: false });
 });
 
-productSchema.pre('findOne', function() {
+productSchema.pre('findOne', function () {
     this.where({ isDeleted: false });
 });
 
-productSchema.pre('countDocuments', function() {
+productSchema.pre('countDocuments', function () {
     this.where({ isDeleted: false });
 });
 
@@ -70,6 +81,8 @@ productSchema.index({ sku: 1, userId: 1 }, { unique: true });
 productSchema.index({ barcode: 1, userId: 1 }, { unique: true, sparse: true });
 // Compound index to ensure Variant SKU is unique per user
 productSchema.index({ "variants.sku": 1, userId: 1 }, { unique: true, sparse: true });
+// Compound index to ensure Variant Barcode is unique per user
+productSchema.index({ "variants.barcode": 1, userId: 1 }, { unique: true, sparse: true });
 
 const Product = mongoose.model('Product', productSchema);
 

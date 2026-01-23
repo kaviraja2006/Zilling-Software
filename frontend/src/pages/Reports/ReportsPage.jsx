@@ -84,6 +84,7 @@ const ReportsPage = () => {
     }, [datePreset]);
 
     // --- Data Fetching ---
+    // Fetch main dashboard data (when date range changes)
     useEffect(() => {
         if (!dateRange.start) return;
 
@@ -92,21 +93,20 @@ const ReportsPage = () => {
             try {
                 const params = { startDate: dateRange.start, endDate: dateRange.end };
 
-                const [dashRes, custRes, payRes, trendRes, prodRes] = await Promise.all([
+                const [dashRes, custRes, payRes, trendRes] = await Promise.all([
                     services.reports.getDashboardStats(params),
                     services.reports.getCustomerMetrics(params),
                     services.reports.getPaymentMethodStats(params),
-                    services.reports.getSalesTrend(params),
-                    services.reports.getTopProducts({ ...params, groupBy: topProductsTab })
+                    services.reports.getSalesTrend(params)
                 ]);
 
-                setStats({
+                setStats(prev => ({
+                    ...prev,
                     dashboard: dashRes.data,
                     customers: custRes.data,
                     paymentMethods: payRes.data,
-                    salesTrend: trendRes.data,
-                    topProducts: prodRes.data
-                });
+                    salesTrend: trendRes.data
+                }));
             } catch (error) {
                 console.error("Analytics Error:", error);
             } finally {
@@ -115,6 +115,23 @@ const ReportsPage = () => {
         };
 
         fetchData();
+    }, [dateRange]);
+
+    // Fetch top products separately (when tab or date range changes)
+    useEffect(() => {
+        if (!dateRange.start) return;
+
+        const fetchTopProducts = async () => {
+            try {
+                const params = { startDate: dateRange.start, endDate: dateRange.end, groupBy: topProductsTab };
+                const prodRes = await services.reports.getTopProducts(params);
+                setStats(prev => ({ ...prev, topProducts: prodRes.data }));
+            } catch (error) {
+                console.error("Top Products Error:", error);
+            }
+        };
+
+        fetchTopProducts();
     }, [dateRange, topProductsTab]);
 
     // --- Helpers ---
@@ -127,12 +144,12 @@ const ReportsPage = () => {
         const now = new Date();
         const reportTitle = type === 'summary' ? "Business Performance Summary" : "Detailed Analytics";
         const dateRangeStr = `Analytics Report (${new Date(dateRange.start).toLocaleDateString()} - ${new Date(dateRange.end).toLocaleDateString()})`;
-        
+
         // --- Header Section ---
         doc.setFontSize(18);
         doc.setTextColor(15, 23, 42); // slate-900
         doc.text(settings.store.name || "Store Analytics", 14, 20);
-        
+
         doc.setFontSize(9);
         doc.setTextColor(100, 116, 139); // slate-500
         const address = [
@@ -141,21 +158,21 @@ const ReportsPage = () => {
         ].filter(s => s.trim()).join(', ');
         doc.text(address, 14, 26);
         doc.text(`GSTIN: ${settings.store.gstin || 'N/A'}`, 14, 31);
-        
+
         doc.setDrawColor(226, 232, 240); // slate-200
         doc.line(14, 35, 196, 35);
-        
+
         // --- Report Title & Date ---
         doc.setFontSize(14);
         doc.setFont("helvetica", "bold");
         doc.setTextColor(15, 23, 42);
         doc.text(reportTitle, 14, 45);
-        
+
         doc.setFontSize(11);
         doc.setFont("helvetica", "normal");
         doc.setTextColor(51, 65, 85); // slate-700
         doc.text(dateRangeStr, 14, 52);
-        
+
         doc.setFontSize(10);
         doc.setTextColor(71, 85, 105); // slate-600
         doc.text(`Exported on: ${now.toLocaleDateString()} at ${now.toLocaleTimeString()}`, 14, 58);
@@ -452,11 +469,11 @@ const ReportsPage = () => {
                 <Card className="lg:col-span-2">
                     <CardHeader><CardTitle>Product Performance Matrix</CardTitle></CardHeader>
                     <CardContent className="h-64">
-                        <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0} debounce={50}>
-                            <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
+                        <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0} debounce={150}>
+                            <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 30 }}>
                                 <CartesianGrid />
                                 <XAxis type="number" dataKey="marginPercent" name="Margin" unit="%" domain={[0, 'auto']} label={{ value: 'Margin %', position: 'insideBottom', offset: -10 }} />
-                                <YAxis type="number" dataKey="revenue" name="Revenue" unit="₹" label={{ value: 'Revenue', angle: -90, position: 'insideLeft' }} />
+                                <YAxis type="number" dataKey="revenue" name="Revenue" unit="₹" label={{ value: 'Revenue', angle: -90, position: 'insideLeft', offset: 10, dx: -10 }} />
                                 <ZAxis type="number" dataKey="quantity" range={[60, 400]} name="Quantity" />
                                 <Tooltip cursor={{ strokeDasharray: '3 3' }} />
                                 <Scatter name="Products" data={stats.topProducts} fill="#8884d8">

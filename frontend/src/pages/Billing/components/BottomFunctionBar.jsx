@@ -6,7 +6,6 @@ const BottomFunctionBar = ({ onFunctionClick }) => {
         { key: 'F2', label: 'Change Quantity' },
         { key: 'F3', label: 'Item Discount' },
         { key: 'F4', label: 'Remove Item' },
-        { key: 'F6', label: 'Change Unit' },
         { key: 'F8', label: 'Additional Charges' },
         { key: 'F9', label: 'Bill Discount' },
         { key: 'F10', label: 'Loyalty Points' },

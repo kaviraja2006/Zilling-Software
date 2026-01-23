@@ -13,6 +13,7 @@ import BottomFunctionBar from './components/BottomFunctionBar';
 import useKeyboardShortcuts from '../../hooks/useKeyboardShortcuts';
 import { DiscountModal, RemarksModal, AdditionalChargesModal, LoyaltyPointsModal } from './components/ActionModals';
 import CustomerSearchModal from './components/CustomerSearchModal';
+import QuantityModal from './components/QuantityModal';
 import { useSettings } from '../../context/SettingsContext';
 
 
@@ -23,20 +24,50 @@ const BillingPage = () => {
     const { settings } = useSettings();
     const searchInputRef = useRef(null);
 
-    // --- State: Multi-Tab Support ---
-    const [activeBills, setActiveBills] = useState([
-        {
-            id: 1,
-            customer: null,
-            cart: [],
-            totals: { grossTotal: 0, itemDiscount: 0, subtotal: 0, tax: 0, discount: 0, additionalCharges: 0, roundOff: 0, total: 0 },
-            paymentMode: 'Cash',
-            amountReceived: 0,
-            remarks: '',
-            billDiscount: 0
+    // --- State: Multi-Tab Support with localStorage Persistence ---
+    const [activeBills, setActiveBills] = useState(() => {
+        // Try to restore from localStorage on initial load
+        try {
+            const saved = localStorage.getItem('billing_activeBills');
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                // Validate the data before using it
+                if (Array.isArray(parsed) && parsed.length > 0) {
+                    return parsed;
+                }
+            }
+        } catch (error) {
+            console.error('Failed to restore billing state:', error);
         }
-    ]);
-    const [activeBillId, setActiveBillId] = useState(1);
+        // Default state if nothing in localStorage
+        return [
+            {
+                id: 1,
+                customer: null,
+                cart: [],
+                totals: { grossTotal: 0, itemDiscount: 0, subtotal: 0, tax: 0, discount: 0, additionalCharges: 0, roundOff: 0, total: 0 },
+                paymentMode: 'Cash',
+                amountReceived: 0,
+                remarks: '',
+                billDiscount: 0,
+                additionalCharges: 0,
+                loyaltyPointsDiscount: 0,
+                status: 'Paid'
+            }
+        ];
+    });
+    const [activeBillId, setActiveBillId] = useState(() => {
+        // Restore active bill ID
+        try {
+            const saved = localStorage.getItem('billing_activeBillId');
+            if (saved) {
+                return parseInt(saved, 10);
+            }
+        } catch (error) {
+            console.error('Failed to restore active bill ID:', error);
+        }
+        return 1;
+    });
     const [selectedItemId, setSelectedItemId] = useState(null);
     const [modals, setModals] = useState({
         itemDiscount: false,
@@ -44,11 +75,30 @@ const BillingPage = () => {
         remarks: false,
         additionalCharges: false,
         loyaltyPoints: false,
-        customerSearch: false
+        customerSearch: false,
+        quantityChange: false
     });
     const [searchTerm, setSearchTerm] = useState('');
     const [focusIndex, setFocusIndex] = useState(-1); // For keyboard navigation in grid
     const [mobileTab, setMobileTab] = useState('items'); // 'items' | 'payment'
+
+    // Save to localStorage whenever bills change
+    useEffect(() => {
+        try {
+            localStorage.setItem('billing_activeBills', JSON.stringify(activeBills));
+        } catch (error) {
+            console.error('Failed to save billing state:', error);
+        }
+    }, [activeBills]);
+
+    // Save active bill ID to localStorage
+    useEffect(() => {
+        try {
+            localStorage.setItem('billing_activeBillId', activeBillId.toString());
+        } catch (error) {
+            console.error('Failed to save active bill ID:', error);
+        }
+    }, [activeBillId]);
 
     // Helper: Get Current Bill
     const currentBill = activeBills.find(b => b.id === activeBillId) || activeBills[0];
@@ -326,19 +376,11 @@ const BillingPage = () => {
 
     // --- Actions: Key Handlers ---
     const handleF2 = () => {
-        // Change Qty
+        // Change Qty - Open Quantity Modal
         if (selectedItemId) {
-            const qtyInput = document.getElementById(`qty-${selectedItemId}`);
-            if (qtyInput) {
-                qtyInput.focus();
-                qtyInput.select();
-            } else {
-                // Fallback if ID scheme fails or logic differs
-                // Since input is inside grid, let's use a simpler prompt/modal if focus fails
-                // But simpler: just toggle a 'isEditingQty' state? 
-                // For now, let's try to focus the input if we add IDs to them in Grid.
-                // Alternate: Open small modal
-            }
+            setModals(prev => ({ ...prev, quantityChange: true }));
+        } else {
+            alert("No item selected. Please select an item to change its quantity.");
         }
     };
 
@@ -362,23 +404,7 @@ const BillingPage = () => {
         }
     };
 
-    const handleF6 = () => {
-        // Change Unit - Toggle Pattern (PCS -> BOX -> PCS)
-        if (selectedItemId) {
-            const newCart = currentBill.cart.map(item => {
-                const itemId = item.id || item._id;
-                if (itemId === selectedItemId) {
-                    const currentUnit = item.unit?.toLowerCase() || 'pcs';
-                    const newUnit = currentUnit === 'pcs' ? 'box' : 'pcs';
-                    return { ...item, unit: newUnit };
-                }
-                return item;
-            });
-            updateCurrentBill({ cart: newCart });
-        } else {
-            alert("No item selected. Please select an item to change its unit.");
-        }
-    };
+
 
     const handleF8 = () => {
         setModals(prev => ({ ...prev, additionalCharges: true }));
@@ -506,7 +532,6 @@ const BillingPage = () => {
         'F2': handleF2,
         'F3': handleF3,
         'F4': handleF4,
-        'F6': handleF6,
         'F8': handleF8,
         'F9': handleF9,
         'F10': handleF10,
@@ -527,7 +552,6 @@ const BillingPage = () => {
             case 'F2': handleF2(); break;
             case 'F3': handleF3(); break;
             case 'F4': handleF4(); break;
-            case 'F6': handleF6(); break;
             case 'F8': handleF8(); break;
             case 'F9': handleF9(); break;
             case 'F10': handleF10(); break;
@@ -730,6 +754,12 @@ const BillingPage = () => {
                 isOpen={modals.customerSearch}
                 onClose={() => setModals(prev => ({ ...prev, customerSearch: false }))}
                 onSelect={(customer) => updateCurrentBill({ customer })}
+            />
+            <QuantityModal
+                isOpen={modals.quantityChange}
+                onClose={() => setModals(prev => ({ ...prev, quantityChange: false }))}
+                item={currentBill.cart.find(i => (i.id || i._id) === selectedItemId)}
+                onApply={(newQty) => updateQuantity(selectedItemId, newQty)}
             />
 
         </div>

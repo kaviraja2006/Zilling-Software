@@ -18,7 +18,15 @@ const getProducts = asyncHandler(async (req, res) => {
         price: p.price,
         stock: p.stock,
         unit: p.unit,
-        description: p.description
+        description: p.description,
+        barcode: p.barcode,
+        barcodeType: p.barcodeType,
+        taxRate: p.taxRate,
+        costPrice: p.costPrice,
+        minStock: p.minStock,
+        expiryDate: p.expiryDate,
+        isActive: p.isActive,
+        variants: p.variants || []
     }));
     res.json(response);
 });
@@ -40,7 +48,15 @@ const getProductById = asyncHandler(async (req, res) => {
             price: product.price,
             stock: product.stock,
             unit: product.unit,
-            description: product.description
+            description: product.description,
+            barcode: product.barcode,
+            barcodeType: product.barcodeType,
+            taxRate: product.taxRate,
+            costPrice: product.costPrice,
+            minStock: product.minStock,
+            expiryDate: product.expiryDate,
+            isActive: product.isActive,
+            variants: product.variants || []
         });
     } else {
         res.status(404);
@@ -70,11 +86,15 @@ const createProduct = asyncHandler(async (req, res) => {
         expiryDate: Joi.date().allow(null).optional(),
         isActive: Joi.boolean().default(true).optional(),
         variants: Joi.array().items(Joi.object({
-            name: Joi.string().required(),
+            name: Joi.string().allow('').optional(),
             options: Joi.array().items(Joi.string()).required(),
-            price: Joi.number().optional(),
-            stock: Joi.number().optional(),
-            sku: Joi.string().optional()
+            price: Joi.number().required(),
+            stock: Joi.number().required(),
+            sku: Joi.string().allow('').optional(),
+            barcode: Joi.string().allow('').optional(),
+            barcodeType: Joi.string().valid('CODE128', 'EAN13', 'UPC').default('CODE128').optional(),
+            costPrice: Joi.number().optional(),
+            attributes: Joi.object().pattern(Joi.string(), Joi.string()).optional()
         })).optional()
     });
 
@@ -99,6 +119,22 @@ const createProduct = asyncHandler(async (req, res) => {
         if (barcodeExists) {
             res.status(400);
             throw new Error('Product with this Barcode already exists');
+        }
+    }
+
+    // Validate variant barcodes for uniqueness
+    if (variants && variants.length > 0) {
+        for (const variant of variants) {
+            if (variant.barcode) {
+                const variantBarcodeExists = await Product.findOne({
+                    userId: req.user._id,
+                    'variants.barcode': variant.barcode
+                });
+                if (variantBarcodeExists) {
+                    res.status(400);
+                    throw new Error(`Variant barcode '${variant.barcode}' already exists`);
+                }
+            }
         }
     }
 
@@ -196,6 +232,23 @@ const updateProduct = asyncHandler(async (req, res) => {
             }
         }
 
+        // Check for duplicate variant barcodes on update
+        if (req.body.variants && req.body.variants.length > 0) {
+            for (const variant of req.body.variants) {
+                if (variant.barcode) {
+                    const variantBarcodeExists = await Product.findOne({
+                        _id: { $ne: product._id },
+                        userId: req.user._id,
+                        'variants.barcode': variant.barcode
+                    });
+                    if (variantBarcodeExists) {
+                        res.status(400);
+                        throw new Error(`Variant barcode '${variant.barcode}' already exists`);
+                    }
+                }
+            }
+        }
+
         const updatedProduct = await product.save();
         res.json({
             id: updatedProduct._id,
@@ -252,7 +305,7 @@ const restoreProduct = asyncHandler(async (req, res) => {
         product.isDeleted = false;
         product.deletedAt = null;
         await product.save();
-        res.json({ 
+        res.json({
             message: 'Product restored successfully',
             product: {
                 id: product._id,
@@ -326,6 +379,48 @@ const getProductStats = asyncHandler(async (req, res) => {
     });
 });
 
+// @desc    Get product by variant barcode
+// @route   GET /products/barcode/:barcode/variant
+// @access  Private
+const getProductByVariantBarcode = asyncHandler(async (req, res) => {
+    const { barcode } = req.params;
+
+    const product = await Product.findOne({
+        userId: req.user._id,
+        'variants.barcode': barcode
+    });
+
+    if (product) {
+        const variantIndex = product.variants.findIndex(v => v.barcode === barcode);
+        const variant = product.variants[variantIndex];
+
+        res.json({
+            productId: product._id,
+            productName: product.name,
+            category: product.category,
+            brand: product.brand,
+            unit: product.unit,
+            taxRate: product.taxRate,
+            variant: {
+                id: variant._id,
+                name: variant.name,
+                options: variant.options,
+                price: variant.price,
+                stock: variant.stock,
+                sku: variant.sku,
+                barcode: variant.barcode,
+                barcodeType: variant.barcodeType,
+                costPrice: variant.costPrice,
+                attributes: variant.attributes
+            },
+            variantIndex
+        });
+    } else {
+        res.status(404);
+        throw new Error('Product variant not found with this barcode');
+    }
+});
+
 module.exports = {
     getProducts,
     getProductById,
@@ -334,5 +429,6 @@ module.exports = {
     deleteProduct,
     restoreProduct,
     fixIndexes,
-    getProductStats
+    getProductStats,
+    getProductByVariantBarcode
 };

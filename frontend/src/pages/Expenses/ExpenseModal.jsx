@@ -227,16 +227,6 @@ const ExpenseModal = ({ isOpen, onClose, expense = null }) => {
                         </div>
                     </div>
 
-                    {/* Tags */}
-                    <div className="space-y-2">
-                        <label className="text-sm font-medium text-slate-700">Tags</label>
-                        <TagsInput
-                            value={formData.tags}
-                            onChange={(tags) => setFormData(prev => ({ ...prev, tags }))}
-                            suggestions={COMMON_TAGS}
-                            placeholder="Add tags (press Enter)"
-                        />
-                    </div>
 
                     {/* Recurring Expense */}
                     <div className="space-y-3 p-4 bg-slate-50 rounded-lg border border-slate-200">
