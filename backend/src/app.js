@@ -31,7 +31,7 @@ app.use((req, res, next) => {
     next();
 });
 
-// app.options('*', cors()); // Enable pre-flight for all routes
+app.options('*', cors()); // Enable pre-flight for all routes
 app.use(helmet());
 app.use(express.json());
 
