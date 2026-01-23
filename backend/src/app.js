@@ -21,6 +21,7 @@ const app = express();
 app.use(cors({
     origin: ['http://localhost:5173', 'http://localhost:5000', 'https://kwiqbill.netlify.app', 'https://billing-software-o1qb.onrender.com', /^https:\/\/.*\.vercel\.app$/],
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true,
     optionsSuccessStatus: 200
 }));
@@ -31,7 +32,6 @@ app.use((req, res, next) => {
     next();
 });
 
-app.options('*', cors()); // Enable pre-flight for all routes
 app.use(helmet());
 app.use(express.json());
 
