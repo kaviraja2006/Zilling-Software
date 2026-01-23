@@ -23,7 +23,8 @@ app.use(cors({
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true,
-    optionsSuccessStatus: 200
+    preflightContinue: false,
+    optionsSuccessStatus: 204
 }));
 
 // Security Middleware for Google Login
@@ -32,7 +33,10 @@ app.use((req, res, next) => {
     next();
 });
 
-app.use(helmet());
+// Apply helmet AFTER CORS to avoid conflicts
+app.use(helmet({
+    crossOriginResourcePolicy: { policy: "cross-origin" }
+}));
 app.use(express.json());
 
 
