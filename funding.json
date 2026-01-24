@@ -1,0 +1,59 @@
+{
+  "$schema": "https://fundingjson.org/schema/v1.1.0.json",
+  "version": "v1.1.0",
+  "entity": {
+    "type": "organization",
+    "role": "maintainer",
+    "name": "Your Name",
+    "email": "your-email@gmail.com",
+    "description": "Independent open-source maintainer building free software for small businesses.",
+    "webpageUrl": {
+      "url": "https://github.com/yourusername"
+    }
+  },
+  "projects": [
+    {
+      "guid": "zilling",
+      "name": "Zilling",
+      "description": "Open-source billing and invoicing platform for small businesses.",
+      "webpageUrl": {
+        "url": "https://github.com/yourusername/zilling"
+      },
+      "repositoryUrl": {
+        "url": "https://github.com/yourusername/zilling"
+      },
+      "licenses": [
+        "spdx:Apache-2.0"
+      ],
+      "tags": [
+        "open-source",
+        "billing",
+        "mern-stack"
+      ]
+    }
+  ],
+  "funding": {
+    "channels": [
+      {
+        "guid": "github-sponsors",
+        "type": "payment-provider",
+        "address": "https://github.com/sponsors/yourusername",
+        "description": "GitHub Sponsors funding channel."
+      }
+    ],
+    "plans": [
+      {
+        "guid": "monthly-support",
+        "status": "active",
+        "name": "Monthly Support",
+        "description": "Supports ongoing maintenance and development.",
+        "amount": 0,
+        "currency": "USD",
+        "frequency": "monthly",
+        "channels": [
+          "github-sponsors"
+        ]
+      }
+    ]
+  }
+}
