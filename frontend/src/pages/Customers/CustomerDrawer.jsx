@@ -5,7 +5,7 @@ import { Button } from '../../components/ui/Button';
 import { ShoppingBag, Calendar, Check, AlertCircle, X, Printer, ChevronDown, ChevronUp } from 'lucide-react';
 import services from '../../services/api';
 import { useSettings } from '../../context/SettingsContext';
-import { printReceipt } from '../../utils/printReceipt';
+import { printReceipt } from '../../utils/printer';
 
 // Indian States
 const INDIAN_STATES = [
@@ -588,10 +588,10 @@ const CustomerDrawer = ({ isOpen, onClose, customer, onSave, initialTab = 'detai
                                                 type="button"
                                                 onClick={() => handleTagToggle(tag)}
                                                 className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${formData.tags.includes(tag)
-                                                        ? tag === 'VIP' ? 'bg-purple-600 text-white'
-                                                            : tag === 'Wholesale' ? 'bg-blue-600 text-white'
-                                                                : 'bg-orange-600 text-white'
-                                                        : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                                                    ? tag === 'VIP' ? 'bg-purple-600 text-white'
+                                                        : tag === 'Wholesale' ? 'bg-blue-600 text-white'
+                                                            : 'bg-orange-600 text-white'
+                                                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
                                                     }`}
                                             >
                                                 {formData.tags.includes(tag) && <Check size={12} className="inline mr-1" />}
@@ -626,7 +626,7 @@ const CustomerDrawer = ({ isOpen, onClose, customer, onSave, initialTab = 'detai
                                                 <p className="text-xs text-slate-500 uppercase">Total Visits</p>
                                                 <p className="text-xl font-bold text-slate-900">{customer.totalVisits}</p>
                                             </div>
-                                            <button 
+                                            <button
                                                 onClick={() => setActiveTab('history')}
                                                 className="mt-2 text-[10px] text-blue-600 font-semibold hover:underline"
                                             >
@@ -653,7 +653,7 @@ const CustomerDrawer = ({ isOpen, onClose, customer, onSave, initialTab = 'detai
                             ) : orders.length > 0 ? (
                                 orders.map((order) => (
                                     <div key={order.id} className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
-                                        <div 
+                                        <div
                                             className="p-4 flex justify-between items-center cursor-pointer hover:bg-slate-50 transition-colors"
                                             onClick={() => setExpandedOrder(expandedOrder === order.id ? null : order.id)}
                                         >
@@ -733,9 +733,9 @@ const CustomerDrawer = ({ isOpen, onClose, customer, onSave, initialTab = 'detai
                                                     </table>
                                                 </div>
                                                 <div className="flex justify-end pt-2">
-                                                    <Button 
-                                                        size="sm" 
-                                                        variant="outline" 
+                                                    <Button
+                                                        size="sm"
+                                                        variant="outline"
                                                         className="h-8 text-xs border-blue-200 text-blue-600 hover:bg-blue-50"
                                                         onClick={(e) => {
                                                             e.stopPropagation();

@@ -34,17 +34,17 @@ const StatCard = ({ title, value, change, changeType, icon: Icon, color }) => (
     <Card className="shadow-md hover:shadow-lg transition-shadow border-none overflow-hidden h-full">
         <CardContent className="p-0 h-full">
             <div className="flex items-stretch h-full">
-                <div className="flex-1 p-6 flex items-center space-x-4">
-                    <div className={cn("p-3 rounded-full shadow-sm", color)}>
+                <div className="flex-1 p-6 flex items-center space-x-4 min-w-0">
+                    <div className={cn("p-3 rounded-full shadow-sm flex-shrink-0", color)}>
                         <Icon size={24} className="text-white" />
                     </div>
-                    <div>
-                        <p className="text-sm font-medium text-slate-500">{title}</p>
-                        <h3 className="text-2xl font-bold text-slate-900">{value}</h3>
+                    <div className="min-w-0">
+                        <p className="text-sm font-medium text-slate-500 truncate">{title}</p>
+                        <h3 className="text-2xl font-bold text-slate-900 truncate" title={value}>{value}</h3>
                     </div>
                 </div>
                 {change && (
-                    <div className={cn("w-1/4 flex items-center justify-center font-bold text-base border-l h-auto",
+                    <div className={cn("w-24 flex-shrink-0 flex items-center justify-center font-bold text-base border-l h-auto",
                         changeType === 'increase'
                             ? "bg-green-50 text-green-700 border-green-100"
                             : "bg-rose-50 text-rose-700 border-rose-100"
@@ -217,7 +217,7 @@ const Dashboard = () => {
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Zilling Dashboard</h1>
+                    <h1 className="text-3xl font-bold text-slate-900 tracking-tight">KWIQBILL Dashboard</h1>
                     <p className="text-slate-500 text-sm mt-1">Overview of your store's performance</p>
                 </div>
 

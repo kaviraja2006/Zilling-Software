@@ -341,43 +341,7 @@ const SettingsPage = () => {
                         </Card>
 
                         {/* Visual Toggles Grid */}
-                        <Card>
-                            <CardContent className="p-6">
-                                <div className="flex justify-between items-center mb-4">
-                                    <h3 className="text-lg font-semibold text-slate-800">Visual Options</h3>
-                                    <Button variant="ghost" size="sm" className="text-indigo-600"><Eye className="h-4 w-4 mr-2" /> Live Preview (Beta)</Button>
-                                </div>
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-y-4 gap-x-8">
-                                    {[
-                                        { key: 'showLogo', label: 'Show Store Logo' },
-                                        { key: 'showWatermark', label: 'Show Watermark' },
-                                        { key: 'showStoreAddress', label: 'Show Store Address' },
-                                        { key: 'showTaxBreakup', label: 'Tax Breakup Table' },
-                                        { key: 'showHsn', label: 'HSN/SAC Codes' },
-                                        { key: 'showMrp', label: 'Show MRP vs Selling' },
-                                        { key: 'showSavings', label: 'Savings Highlight' },
-                                        { key: 'showCustomerGstin', label: 'Customer GSTIN' },
-                                        { key: 'showQrcode', label: 'UPI QR Code' },
-                                        { key: 'showTerms', label: 'Terms & Conditions' },
-                                        { key: 'showLoyaltyPoints', label: 'Loyalty Points' },
-                                        { key: 'showSignature', label: 'Auth. Signature Box' }
-                                    ].map(opt => (
-                                        <div key={opt.key} className="flex items-center justify-between group">
-                                            <span className="text-slate-600 text-sm group-hover:text-slate-900 transition-colors">{opt.label}</span>
-                                            <label className="relative inline-flex items-center cursor-pointer">
-                                                <input
-                                                    type="checkbox"
-                                                    className="sr-only peer"
-                                                    checked={settings.invoice[opt.key]}
-                                                    onChange={(e) => handleChange('invoice', opt.key, e.target.checked)}
-                                                />
-                                                <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"></div>
-                                            </label>
-                                        </div>
-                                    ))}
-                                </div>
-                            </CardContent>
-                        </Card>
+
 
                         <Card>
                             <CardContent className="p-6 space-y-4">
@@ -511,9 +475,11 @@ const SettingsPage = () => {
                 </div>
                 <div className="flex gap-2">
                     <Button variant="ghost" onClick={() => window.location.reload()}><RotateCcw className="h-4 w-4 mr-2" /> Reset</Button>
-                    <Button onClick={handleSave} className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-200">
-                        <Save className="h-4 w-4 mr-2" /> Save Changes
-                    </Button>
+                    {unsavedChanges && (
+                        <Button onClick={handleSave} className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-200">
+                            <Save className="h-4 w-4 mr-2" /> Save Changes
+                        </Button>
+                    )}
                 </div>
             </div>
 

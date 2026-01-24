@@ -48,34 +48,39 @@ const ReportsPage = () => {
     // --- Date Logic ---
     useEffect(() => {
         const now = new Date();
-        let start = new Date();
-        let end = new Date();
+        // Helpers to avoid mutation side-effects
+        const getStartOfDay = (d) => { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; };
+        const getEndOfDay = (d) => { const x = new Date(d); x.setHours(23, 59, 59, 999); return x; };
+
+        let start = getStartOfDay(now);
+        let end = getEndOfDay(now);
 
         switch (datePreset) {
             case 'today':
-                start.setHours(0, 0, 0, 0);
-                end.setHours(23, 59, 59, 999);
+                // start/end already set to today
                 break;
             case 'yesterday':
                 start.setDate(start.getDate() - 1);
-                start.setHours(0, 0, 0, 0);
-                end.setDate(end.getDate());
-                end.setHours(23, 59, 59, 999); // Actually end of yesterday
-                end = new Date(start); end.setHours(23, 59, 59, 999);
-                break;
-            case 'thisWeek':
-                const day = start.getDay();
-                const diff = start.getDate() - day + (day === 0 ? -6 : 1);
-                start.setDate(diff); start.setHours(0, 0, 0, 0);
+                end = new Date(start);
                 end.setHours(23, 59, 59, 999);
                 break;
+            case 'thisWeek':
+                // Mon - Sun (or Today)
+                const day = start.getDay() || 7; // Make Sunday 7
+                if (day !== 1) start.setHours(-24 * (day - 1)); // Go back to Monday
+                // End is Today
+                break;
             case 'thisMonth':
-                start = new Date(now.getFullYear(), now.getMonth(), 1);
-                end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+                start.setDate(1);
+                // End is Today
                 break;
             case 'lastMonth':
-                start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-                end = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
+                start.setMonth(start.getMonth() - 1);
+                start.setDate(1);
+                end = new Date(start);
+                end.setMonth(end.getMonth() + 1);
+                end.setDate(0); // Go back to last day of prev month
+                end.setHours(23, 59, 59, 999);
                 break;
             default:
                 break;
@@ -538,20 +543,20 @@ const ReportsPage = () => {
     );
 
     return (
-        <div className="h-[calc(100vh-theme(spacing.16))] overflow-y-auto scrollbar-hide bg-slate-50/30 space-y-6 pb-20">
+        <div className="h-[calc(100vh-theme(spacing.16))] overflow-y-auto overflow-x-hidden scrollbar-hide bg-slate-50/30 space-y-6 pb-20">
             {/* Sticky Header */}
-            <div className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-slate-200 -mx-6 px-6 py-4 flex justify-between items-center mb-6">
-                <div className="flex items-center gap-4">
+            <div className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-slate-200 -mx-6 px-6 py-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 md:gap-0 mb-6 transition-all">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full md:w-auto">
                     <h1 className="text-2xl font-bold text-slate-900">Analytics</h1>
-                    <div className="flex bg-slate-100 p-1 rounded-lg">
+                    <div className="flex bg-slate-100 p-1 rounded-lg w-full sm:w-auto">
                         <button
-                            className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${viewMode === 'analyst' ? 'bg-white shadow text-slate-900' : 'text-slate-500'}`}
+                            className={`flex-1 sm:flex-none px-3 py-1 text-xs font-medium rounded-md transition-all ${viewMode === 'analyst' ? 'bg-white shadow text-slate-900' : 'text-slate-500'}`}
                             onClick={() => setViewMode('analyst')}
                         >
                             <LineChart className="h-3 w-3 inline mr-1" /> Detailed
                         </button>
                         <button
-                            className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${viewMode === 'owner' ? 'bg-white shadow text-slate-900' : 'text-slate-500'}`}
+                            className={`flex-1 sm:flex-none px-3 py-1 text-xs font-medium rounded-md transition-all ${viewMode === 'owner' ? 'bg-white shadow text-slate-900' : 'text-slate-500'}`}
                             onClick={() => setViewMode('owner')}
                         >
                             <LayoutDashboard className="h-3 w-3 inline mr-1" /> Owner Summary
@@ -559,10 +564,10 @@ const ReportsPage = () => {
                     </div>
                 </div>
 
-                <div className="flex items-center gap-3">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full md:w-auto">
                     {/* Date Controls */}
                     <select
-                        className="bg-slate-50 border border-slate-200 text-sm rounded-md px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-500"
+                        className="bg-slate-50 border border-slate-200 text-sm rounded-md px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-500 w-full sm:w-auto"
                         value={datePreset}
                         onChange={(e) => setDatePreset(e.target.value)}
                     >
@@ -573,7 +578,7 @@ const ReportsPage = () => {
                         <option value="thisMonth">This Month</option>
                     </select>
 
-                    <Button variant="outline" size="sm" onClick={() => handleExport(viewMode === 'owner' ? 'summary' : 'detailed')}>
+                    <Button variant="outline" size="sm" className="w-full sm:w-auto" onClick={() => handleExport(viewMode === 'owner' ? 'summary' : 'detailed')}>
                         <Download className="mr-2 h-4 w-4" /> Export
                     </Button>
                 </div>

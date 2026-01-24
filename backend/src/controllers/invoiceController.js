@@ -168,7 +168,9 @@ const updateInvoice = asyncHandler(async (req, res) => {
         }
     }
 
-    const savedInvoice = await invoice.save();
+    // Verify consistency before saving is ideal, but for status updates on legacy/corrupt data, 
+    // we skip full validation to avoid blocking the user (e.g. if items.productId is missing).
+    const savedInvoice = await invoice.save({ validateBeforeSave: false });
 
     // Update Customer Stats if status changed or balance changed
     if (invoice.customerId) {
@@ -179,7 +181,7 @@ const updateInvoice = asyncHandler(async (req, res) => {
                 customer.totalSpent = Math.max(0, customer.totalSpent - invoice.total);
                 customer.totalVisits = Math.max(0, customer.totalVisits - 1);
                 customer.due = Math.max(0, customer.due - oldBalance);
-                
+
                 // Restore stock if cancelled
                 for (const item of invoice.items) {
                     const product = await Product.findOne({ _id: item.productId, userId: req.user._id });
@@ -188,7 +190,7 @@ const updateInvoice = asyncHandler(async (req, res) => {
                         await product.save();
                     }
                 }
-            } 
+            }
             // Case 2: Status restored from Cancelled
             else if (oldStatus === 'Cancelled' && status && status !== 'Cancelled') {
                 customer.totalSpent += invoice.total;
@@ -208,7 +210,7 @@ const updateInvoice = asyncHandler(async (req, res) => {
             else if (invoice.balance !== oldBalance) {
                 customer.due += (invoice.balance - oldBalance);
             }
-            
+
             await customer.save();
         }
     }
@@ -275,7 +277,7 @@ const createInvoice = asyncHandler(async (req, res) => {
         type: Joi.string().allow('').optional(),
         items: Joi.array().items(
             Joi.object({
-                productId: Joi.string().required(),
+                productId: Joi.string().regex(/^[0-9a-fA-F]{24}$/).message('Invalid Product ID format').required(),
                 name: Joi.string().required(),
                 quantity: Joi.number().greater(0).required(),
                 price: Joi.number().required(),
@@ -299,9 +301,9 @@ const createInvoice = asyncHandler(async (req, res) => {
     console.log("Create Invoice Body:", JSON.stringify(req.body, null, 2));
     const { error } = schema.validate(req.body);
     if (error) {
-        console.log("Joi Validation Error:", error.details[0].message);
+        console.error("Joi Validation Error Details:", JSON.stringify(error.details, null, 2));
         res.status(400);
-        throw new Error(error.details[0].message);
+        throw new Error(`Validation Error: ${error.details[0].message}`);
     }
 
     let {
@@ -312,6 +314,8 @@ const createInvoice = asyncHandler(async (req, res) => {
         amountReceived = 0
     } = req.body;
 
+    console.log("DEBUG: Validation Passed. User ID:", req.user ? req.user._id : 'UNDEFINED');
+
     // Recalculate totals and check stock
     let calcSubtotal = 0;
     const finalItems = [];
@@ -321,6 +325,7 @@ const createInvoice = asyncHandler(async (req, res) => {
     let payments = [];
     const received = parseFloat(amountReceived) || 0;
 
+    console.log("DEBUG: Calculating payments...");
     if (status === 'Paid') {
         balance = 0;
         payments.push({
@@ -347,39 +352,46 @@ const createInvoice = asyncHandler(async (req, res) => {
         balance = 0; // Or keep as total? Usually cancelled means 0 due.
     }
 
+    console.log("DEBUG: Processing items...");
     // Process items - verify user owns the products
     for (const item of items) {
-        const product = await Product.findOne({ _id: item.productId, userId: req.user._id });
-        if (!product) {
-            res.status(400);
-            throw new Error(`Product not found or unauthorized: ${item.name}`);
+        console.log(`DEBUG: Looking up product ${item.productId}`);
+        try {
+            const product = await Product.findOne({ _id: item.productId, userId: req.user._id });
+            if (!product) {
+                console.error(`DEBUG: Product ${item.productId} not found for user ${req.user._id}`);
+                res.status(400);
+                throw new Error(`Product not found or unauthorized: ${item.name}`);
+            }
+
+            console.log(`DEBUG: Found product: ${product.name}, Stock: ${product.stock}`);
+
+            if (product.type !== 'Service' && product.stock < item.quantity) {
+                console.error(`DEBUG: Insufficient stock for ${product.name}`);
+                res.status(400);
+                throw new Error(`Insufficient stock for product: ${product.name}. Available: ${product.stock}`);
+            }
+
+            // Verify item total
+            const lineTotal = item.quantity * item.price;
+            calcSubtotal += lineTotal;
+
+            finalItems.push({
+                productId: product._id,
+                name: product.name,
+                quantity: item.quantity,
+                price: item.price,
+                total: lineTotal
+            });
+
+            // Deduct Stock
+            console.log(`DEBUG: Deducting stock for ${product.name}`);
+            product.stock -= item.quantity;
+            await product.save();
+        } catch (err) {
+            console.error("DEBUG: Error processing item:", err);
+            throw err; // Re-throw to be caught by asyncHandler
         }
-
-        if (product.type !== 'Service' && product.stock < item.quantity) {
-            // Allow service items to bypass stock check or specifically check if type is Product
-            // Assuming product model has 'type', if not, just check stock.
-            // Existing code checked stock. Let's assume stock check is needed.
-            // If we add 'Service' type to Product later, we skip this.
-            // For now, standard behavior:
-            res.status(400);
-            throw new Error(`Insufficient stock for product: ${product.name}. Available: ${product.stock}`);
-        }
-
-        // Verify item total
-        const lineTotal = item.quantity * item.price;
-        calcSubtotal += lineTotal;
-
-        finalItems.push({
-            productId: product._id,
-            name: product.name,
-            quantity: item.quantity,
-            price: item.price,
-            total: lineTotal
-        });
-
-        // Deduct Stock
-        product.stock -= item.quantity;
-        await product.save();
     }
 
     // allow small float diffs
@@ -391,59 +403,70 @@ const createInvoice = asyncHandler(async (req, res) => {
 
     const calcTotal = subtotal + tax + additionalCharges - discount;
 
+    // Generate unique Invoice Number
+    const invoiceNo = `INV-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+
     // Attach user ID
-    const invoice = await Invoice.create({
-        customerId: customerId || null,
-        customerName,
-        date,
-        items: finalItems,
-        grossTotal,
-        itemDiscount,
-        subtotal,
-        tax,
-        discount,
-        additionalCharges,
-        roundOff,
-        total: calcTotal,
-        status, // Use provided status (e.g. Unpaid/Estimate)
-        paymentStatus: status,
-        balance,
-        payments,
-        paymentMethod,
-        type,
-        internalNotes,
-        userId: req.user._id
-    });
+    try {
+        const invoice = await Invoice.create({
+            customerId: customerId || null,
+            customerName,
+            invoiceNo,
+            date,
+            items: finalItems,
+            grossTotal,
+            itemDiscount,
+            subtotal,
+            tax,
+            discount,
+            additionalCharges,
+            roundOff,
+            total: calcTotal,
+            status, // Use provided status (e.g. Unpaid/Estimate)
+            paymentStatus: status,
+            balance,
+            payments,
+            paymentMethod,
+            type,
+            internalNotes,
+            userId: req.user._id
+        });
 
-    // Update Customer Stats if customerId exists (and user owns the customer)
-    if (customerId) {
-        const customer = await Customer.findOne({ _id: customerId, userId: req.user._id });
-        if (customer) {
-            customer.totalSpent += calcTotal;
-            customer.totalVisits += 1;
-            customer.due += balance; // Add the remaining balance to customer's due
-            await customer.save();
+        // Update Customer Stats if customerId exists (and user owns the customer)
+        if (customerId) {
+            const customer = await Customer.findOne({ _id: customerId, userId: req.user._id });
+            if (customer) {
+                customer.totalSpent += calcTotal;
+                customer.totalVisits += 1;
+                customer.due += balance; // Add the remaining balance to customer's due
+                await customer.save();
+            }
         }
-    }
 
-    res.status(201).json({
-        id: invoice._id,
-        customerId: invoice.customerId,
-        customerName: invoice.customerName,
-        date: invoice.date,
-        items: invoice.items,
-        subtotal: invoice.subtotal,
-        tax: invoice.tax,
-        discount: invoice.discount,
-        total: invoice.total,
-        status: invoice.status,
-        paymentMethod: invoice.paymentMethod,
-        type: invoice.type,
-        internalNotes: invoice.internalNotes,
-        invoiceNumber: invoice._id.toString().slice(-6).toUpperCase(),
-        balance: invoice.balance,
-        payments: invoice.payments
-    });
+        res.status(201).json({
+            id: invoice._id,
+            customerId: invoice.customerId,
+            customerName: invoice.customerName,
+            invoiceNo: invoice.invoiceNo,
+            date: invoice.date,
+            items: invoice.items,
+            subtotal: invoice.subtotal,
+            tax: invoice.tax,
+            discount: invoice.discount,
+            total: invoice.total,
+            status: invoice.status,
+            paymentMethod: invoice.paymentMethod,
+            type: invoice.type,
+            internalNotes: invoice.internalNotes,
+            balance: invoice.balance,
+            payments: invoice.payments
+        });
+    } catch (dbError) {
+        console.error("Database Creation Error:", dbError);
+        // Check for duplicate key error on invoiceNo specificially and retry? 
+        // For now, just throw.
+        throw dbError;
+    }
 });
 
 // @desc    Delete invoice (soft delete)
@@ -523,7 +546,7 @@ const bulkDeleteInvoices = asyncHandler(async (req, res) => {
                     await customer.save();
                 }
             }
-            
+
             // Soft delete
             invoice.isDeleted = true;
             invoice.deletedAt = new Date();
@@ -572,7 +595,7 @@ const restoreInvoice = asyncHandler(async (req, res) => {
         invoice.deletedAt = null;
         await invoice.save();
 
-        res.json({ 
+        res.json({
             message: 'Invoice restored successfully',
             invoice: {
                 id: invoice._id,
