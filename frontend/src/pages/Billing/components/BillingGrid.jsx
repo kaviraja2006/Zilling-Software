@@ -33,8 +33,20 @@ const BillingGrid = ({ cart, updateQuantity, removeItem, selectedItemId, onRowCl
                                 onClick={() => onRowClick(item.id || item._id)}
                             >
                                 <TableCell>{index + 1}</TableCell>
-                                <TableCell className="font-mono text-xs">{item.sku || item.barcode || 'N/A'}</TableCell>
-                                <TableCell className="font-medium text-base">{item.name}</TableCell>
+                                <TableCell className="font-mono text-xs">
+                                    {item.variantSku || item.sku || item.barcode || 'N/A'}
+                                    {item.variantIndex !== undefined && (
+                                        <span className="ml-1 text-[10px] text-blue-600 font-semibold">VAR</span>
+                                    )}
+                                </TableCell>
+                                <TableCell className="font-medium text-base">
+                                    {item.name}
+                                    {item.variantName && (
+                                        <div className="text-xs text-blue-600 font-semibold mt-0.5">
+                                            {item.variantName}
+                                        </div>
+                                    )}
+                                </TableCell>
                                 <TableCell>
                                     <div className="flex items-center justify-center gap-1">
                                         <Button
