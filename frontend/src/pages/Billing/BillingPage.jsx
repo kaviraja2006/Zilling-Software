@@ -14,6 +14,7 @@ import useKeyboardShortcuts from '../../hooks/useKeyboardShortcuts';
 import { DiscountModal, RemarksModal, AdditionalChargesModal, LoyaltyPointsModal } from './components/ActionModals';
 import CustomerSearchModal from './components/CustomerSearchModal';
 import QuantityModal from './components/QuantityModal';
+import VariantSelectionModal from './components/VariantSelectionModal';
 import { useSettings } from '../../context/SettingsContext';
 
 
@@ -76,8 +77,10 @@ const BillingPage = () => {
         additionalCharges: false,
         loyaltyPoints: false,
         customerSearch: false,
-        quantityChange: false
+        quantityChange: false,
+        variantSelection: false
     });
+    const [selectedProductForVariant, setSelectedProductForVariant] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [focusIndex, setFocusIndex] = useState(-1); // For keyboard navigation in grid
     const [mobileTab, setMobileTab] = useState('items'); // 'items' | 'payment'
@@ -311,17 +314,66 @@ const BillingPage = () => {
     const filteredProducts = searchTerm
         ? products.filter(p =>
             p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            (p.sku && p.sku.toLowerCase().includes(searchTerm.toLowerCase()))
+            (p.sku && p.sku.toLowerCase().includes(searchTerm.toLowerCase())) ||
+            (p.barcode && p.barcode.toLowerCase().includes(searchTerm.toLowerCase())) ||
+            // Check variant barcodes and SKUs
+            (p.variants && p.variants.some(v => 
+                (v.barcode && v.barcode.toLowerCase().includes(searchTerm.toLowerCase())) ||
+                (v.sku && v.sku.toLowerCase().includes(searchTerm.toLowerCase()))
+            ))
         ).slice(0, 8)
         : [];
 
+    // Check if search term is an exact barcode match for a variant
+    useEffect(() => {
+        if (searchTerm && searchTerm.length > 3) {
+            // Check for exact variant barcode match
+            for (const product of products) {
+                if (product.variants && product.variants.length > 0) {
+                    const variantIndex = product.variants.findIndex(v => 
+                        v.barcode && v.barcode.toLowerCase() === searchTerm.toLowerCase()
+                    );
+                    if (variantIndex >= 0) {
+                        // Found exact variant barcode match - add it directly
+                        const variant = product.variants[variantIndex];
+                        addVariantToCart(product, variant, variantIndex, 1);
+                        setSearchTerm('');
+                        return;
+                    }
+                }
+            }
+
+            // Check for exact product barcode match
+            const exactProduct = products.find(p => 
+                p.barcode && p.barcode.toLowerCase() === searchTerm.toLowerCase()
+            );
+            if (exactProduct) {
+                addToCart(exactProduct);
+                return;
+            }
+        }
+    }, [searchTerm]);
+
+
     // --- Actions: Cart ---
     const addToCart = (product) => {
+        // Check if product has variants
+        if (product.variants && product.variants.length > 0) {
+            // Open variant selection modal
+            setSelectedProductForVariant(product);
+            setModals(prev => ({ ...prev, variantSelection: true }));
+            setSearchTerm('');
+            return;
+        }
+
+        // No variants - proceed with normal add to cart
         const productId = product.id || product._id;
         const price = product.price || product.sellingPrice || 0;
 
         let newCart = [...currentBill.cart];
-        const existingIndex = newCart.findIndex(item => (item.id || item._id) === productId);
+        const existingIndex = newCart.findIndex(item => 
+            (item.id || item._id) === productId && !item.variantIndex
+        );
 
         if (existingIndex > -1) {
             newCart[existingIndex].quantity += 1;
@@ -336,6 +388,50 @@ const BillingPage = () => {
         if (searchInputRef.current) searchInputRef.current.focus();
         // Auto select newly added item
         setSelectedItemId(product.id || product._id);
+    };
+
+    const addVariantToCart = (product, variant, variantIndex, quantity = 1) => {
+        const productId = product.id || product._id;
+        const price = variant.price || 0;
+
+        let newCart = [...currentBill.cart];
+        
+        // Check if this exact variant is already in cart
+        const existingIndex = newCart.findIndex(item => 
+            (item.id || item._id) === productId && item.variantIndex === variantIndex
+        );
+
+        if (existingIndex > -1) {
+            // Increment quantity of existing variant
+            newCart[existingIndex].quantity += quantity;
+            const itemPrice = newCart[existingIndex].price || newCart[existingIndex].sellingPrice || 0;
+            newCart[existingIndex].total = (newCart[existingIndex].quantity * itemPrice) - (newCart[existingIndex].discount || 0);
+        } else {
+            // Add new variant to cart
+            const variantName = variant.name || (variant.options ? variant.options.join(' / ') : 'Variant');
+            newCart.push({
+                ...product,
+                variantIndex,
+                variantId: variant._id,
+                variantName,
+                variantOptions: variant.options || [],
+                variantAttributes: variant.attributes || {},
+                variantSku: variant.sku,
+                price: variant.price,
+                sellingPrice: variant.price,
+                stock: variant.stock,
+                quantity,
+                total: price * quantity,
+                discount: 0,
+                discountPercent: 0,
+                taxRate: product.taxRate || 0
+            });
+        }
+
+        updateCurrentBill({ cart: newCart });
+        if (searchInputRef.current) searchInputRef.current.focus();
+        // Auto select newly added item
+        setSelectedItemId(productId);
     };
 
     const updateQuantity = (id, newQty) => {
@@ -760,6 +856,15 @@ const BillingPage = () => {
                 onClose={() => setModals(prev => ({ ...prev, quantityChange: false }))}
                 item={currentBill.cart.find(i => (i.id || i._id) === selectedItemId)}
                 onApply={(newQty) => updateQuantity(selectedItemId, newQty)}
+            />
+            <VariantSelectionModal
+                isOpen={modals.variantSelection}
+                onClose={() => {
+                    setModals(prev => ({ ...prev, variantSelection: false }));
+                    setSelectedProductForVariant(null);
+                }}
+                product={selectedProductForVariant}
+                onAddToCart={addVariantToCart}
             />
 
         </div>

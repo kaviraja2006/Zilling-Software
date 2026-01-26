@@ -281,7 +281,11 @@ const createInvoice = asyncHandler(async (req, res) => {
                 name: Joi.string().required(),
                 quantity: Joi.number().greater(0).required(),
                 price: Joi.number().required(),
-                total: Joi.number().required() // We verify this
+                total: Joi.number().required(), // We verify this
+                variantIndex: Joi.number().optional(),
+                variantId: Joi.string().optional(),
+                variantName: Joi.string().optional(),
+                variantSku: Joi.string().optional()
             })
         ).min(1).required(),
         subtotal: Joi.number().required(),
@@ -366,10 +370,40 @@ const createInvoice = asyncHandler(async (req, res) => {
 
             console.log(`DEBUG: Found product: ${product.name}, Stock: ${product.stock}`);
 
-            if (product.type !== 'Service' && product.stock < item.quantity) {
-                console.error(`DEBUG: Insufficient stock for ${product.name}`);
-                res.status(400);
-                throw new Error(`Insufficient stock for product: ${product.name}. Available: ${product.stock}`);
+            // Check if this is a variant purchase
+            if (item.variantIndex !== undefined && item.variantIndex !== null) {
+                // Variant purchase - check variant stock
+                if (!product.variants || !product.variants[item.variantIndex]) {
+                    res.status(400);
+                    throw new Error(`Variant not found for product: ${product.name}`);
+                }
+
+                const variant = product.variants[item.variantIndex];
+                console.log(`DEBUG: Variant ${item.variantIndex}: ${variant.name || 'Unnamed'}, Stock: ${variant.stock}`);
+
+                if (variant.stock < item.quantity) {
+                    console.error(`DEBUG: Insufficient variant stock for ${product.name} - ${variant.name || 'Variant'}`);
+                    res.status(400);
+                    throw new Error(`Insufficient stock for variant: ${product.name} - ${variant.name || 'Variant'}. Available: ${variant.stock}`);
+                }
+
+                // Deduct variant stock
+                console.log(`DEBUG: Deducting variant stock for ${product.name} - ${variant.name || 'Variant'}`);
+                product.variants[item.variantIndex].stock -= item.quantity;
+
+                // Recalculate total product stock from all variants
+                product.stock = product.variants.reduce((sum, v) => sum + (parseInt(v.stock) || 0), 0);
+            } else {
+                // Regular product purchase - check product stock
+                if (product.type !== 'Service' && product.stock < item.quantity) {
+                    console.error(`DEBUG: Insufficient stock for ${product.name}`);
+                    res.status(400);
+                    throw new Error(`Insufficient stock for product: ${product.name}. Available: ${product.stock}`);
+                }
+
+                // Deduct product stock
+                console.log(`DEBUG: Deducting stock for ${product.name}`);
+                product.stock -= item.quantity;
             }
 
             // Verify item total
@@ -381,12 +415,14 @@ const createInvoice = asyncHandler(async (req, res) => {
                 name: product.name,
                 quantity: item.quantity,
                 price: item.price,
-                total: lineTotal
+                total: lineTotal,
+                variantIndex: item.variantIndex,
+                variantId: item.variantId,
+                variantName: item.variantName,
+                variantSku: item.variantSku
             });
 
-            // Deduct Stock
-            console.log(`DEBUG: Deducting stock for ${product.name}`);
-            product.stock -= item.quantity;
+            // Save product with updated stock
             await product.save();
         } catch (err) {
             console.error("DEBUG: Error processing item:", err);
@@ -486,7 +522,18 @@ const deleteInvoice = asyncHandler(async (req, res) => {
         for (const item of invoice.items) {
             const product = await Product.findOne({ _id: item.productId, userId: req.user._id });
             if (product) {
-                product.stock += item.quantity;
+                // Check if this was a variant purchase
+                if (item.variantIndex !== undefined && item.variantIndex !== null) {
+                    // Restore variant stock
+                    if (product.variants && product.variants[item.variantIndex]) {
+                        product.variants[item.variantIndex].stock += item.quantity;
+                        // Recalculate total product stock
+                        product.stock = product.variants.reduce((sum, v) => sum + (parseInt(v.stock) || 0), 0);
+                    }
+                } else {
+                    // Restore regular product stock
+                    product.stock += item.quantity;
+                }
                 await product.save();
             }
         }
