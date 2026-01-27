@@ -21,7 +21,7 @@ const ReportsPage = () => {
     const { settings } = useSettings();
     // --- State ---
     const [viewMode, setViewMode] = useState('analyst'); // 'owner' | 'analyst'
-    const [datePreset, setDatePreset] = useState('thisWeek');
+    const [datePreset, setDatePreset] = useState('today');
     const [dateRange, setDateRange] = useState({ start: '', end: '' });
     const [compare, setCompare] = useState(false);
     const [loading, setLoading] = useState(true);
@@ -59,11 +59,6 @@ const ReportsPage = () => {
             case 'today':
                 // start/end already set to today
                 break;
-            case 'yesterday':
-                start.setDate(start.getDate() - 1);
-                end = new Date(start);
-                end.setHours(23, 59, 59, 999);
-                break;
             case 'thisWeek':
                 // Mon - Sun (or Today)
                 const day = start.getDay() || 7; // Make Sunday 7
@@ -74,14 +69,9 @@ const ReportsPage = () => {
                 start.setDate(1);
                 // End is Today
                 break;
-            case 'lastMonth':
-                start.setMonth(start.getMonth() - 1);
-                start.setDate(1);
-                end = new Date(start);
-                end.setMonth(end.getMonth() + 1);
-                end.setDate(0); // Go back to last day of prev month
-                end.setHours(23, 59, 59, 999);
-                break;
+            case 'allTime':
+                setDateRange({ start: '', end: '' });
+                return;
             default:
                 break;
         }
@@ -90,8 +80,9 @@ const ReportsPage = () => {
 
     // --- Data Fetching ---
     // Fetch main dashboard data (when date range changes)
+    // Fetch main dashboard data (when date range changes)
     useEffect(() => {
-        if (!dateRange.start) return;
+        // if (!dateRange.start) return; // Removed to allow All Time fetch
 
         const fetchData = async () => {
             setLoading(true);
@@ -123,8 +114,9 @@ const ReportsPage = () => {
     }, [dateRange]);
 
     // Fetch top products separately (when tab or date range changes)
+    // Fetch top products separately (when tab or date range changes)
     useEffect(() => {
-        if (!dateRange.start) return;
+        // if (!dateRange.start) return; // Removed to allow All Time fetch
 
         const fetchTopProducts = async () => {
             try {
@@ -572,10 +564,9 @@ const ReportsPage = () => {
                         onChange={(e) => setDatePreset(e.target.value)}
                     >
                         <option value="today">Today</option>
-                        <option value="yesterday">Yesterday</option>
                         <option value="thisWeek">This Week</option>
-                        <option value="lastMonth">Last Month</option>
                         <option value="thisMonth">This Month</option>
+                        <option value="allTime">All Time</option>
                     </select>
 
                     <Button variant="outline" size="sm" className="w-full sm:w-auto" onClick={() => handleExport(viewMode === 'owner' ? 'summary' : 'detailed')}>
