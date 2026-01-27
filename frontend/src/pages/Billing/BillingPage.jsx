@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { printReceipt } from '../../utils/printer';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
@@ -310,19 +310,61 @@ const BillingPage = () => {
         }
     }, [currentBill.cart, currentBill.billDiscount, currentBill.additionalCharges, currentBill.loyaltyPointsDiscount]);
 
-    // --- Filter products ---
-    const filteredProducts = searchTerm
-        ? products.filter(p =>
-            p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            (p.sku && p.sku.toLowerCase().includes(searchTerm.toLowerCase())) ||
-            (p.barcode && p.barcode.toLowerCase().includes(searchTerm.toLowerCase())) ||
-            // Check variant barcodes and SKUs
-            (p.variants && p.variants.some(v => 
-                (v.barcode && v.barcode.toLowerCase().includes(searchTerm.toLowerCase())) ||
-                (v.sku && v.sku.toLowerCase().includes(searchTerm.toLowerCase()))
-            ))
-        ).slice(0, 8)
-        : [];
+    // --- Filter products (Enhanced) ---
+    const filteredProducts = useMemo(() => {
+        if (!searchTerm) return [];
+        const lowerTerm = searchTerm.toLowerCase();
+        const terms = lowerTerm.split(/\s+/).filter(t => t.trim());
+
+        if (terms.length === 0) return [];
+
+        return products
+            .map(p => {
+                let score = 0;
+                const name = p.name?.toLowerCase() || '';
+                const sku = p.sku?.toLowerCase() || '';
+                const barcode = p.barcode?.toLowerCase() || '';
+                const category = p.category?.toLowerCase() || '';
+                const brand = p.brand?.toLowerCase() || '';
+
+                // Combine variant Data
+                const variantText = (p.variants || []).map(v =>
+                    `${v.sku || ''} ${v.barcode || ''} ${v.name || ''}`
+                ).join(' ').toLowerCase();
+
+                const searchableText = `${name} ${sku} ${barcode} ${category} ${brand} ${variantText}`;
+
+                // Multi-term check: ALL terms must be present
+                const allTermsMatch = terms.every(term => searchableText.includes(term));
+                if (!allTermsMatch) return null;
+
+                // Scoring
+                // Exact matches get highest priority
+                if (barcode === lowerTerm) score += 100;
+                else if (sku === lowerTerm) score += 90;
+                else if (name === lowerTerm) score += 80;
+
+                // Starts with priority
+                else if (name.startsWith(lowerTerm)) score += 50;
+                else if (sku.startsWith(lowerTerm)) score += 40;
+
+                // Variant Exact Matches
+                if (p.variants && p.variants.some(v => v.barcode === searchTerm)) score += 95;
+
+                // Simple match base score
+                score += 10;
+
+                // Extra points for matches in name/sku/barcode over description/category
+                if (name.includes(lowerTerm)) score += 5;
+                if (sku.includes(lowerTerm)) score += 5;
+
+                return { product: p, score };
+            })
+            .filter(Boolean)
+            .sort((a, b) => b.score - a.score)
+            .map(item => item.product)
+            .slice(0, 15);
+    }, [searchTerm, products]);
 
     // Check if search term is an exact barcode match for a variant
     useEffect(() => {
@@ -330,7 +372,7 @@ const BillingPage = () => {
             // Check for exact variant barcode match
             for (const product of products) {
                 if (product.variants && product.variants.length > 0) {
-                    const variantIndex = product.variants.findIndex(v => 
+                    const variantIndex = product.variants.findIndex(v =>
                         v.barcode && v.barcode.toLowerCase() === searchTerm.toLowerCase()
                     );
                     if (variantIndex >= 0) {
@@ -344,7 +386,7 @@ const BillingPage = () => {
             }
 
             // Check for exact product barcode match
-            const exactProduct = products.find(p => 
+            const exactProduct = products.find(p =>
                 p.barcode && p.barcode.toLowerCase() === searchTerm.toLowerCase()
             );
             if (exactProduct) {
@@ -371,7 +413,7 @@ const BillingPage = () => {
         const price = product.price || product.sellingPrice || 0;
 
         let newCart = [...currentBill.cart];
-        const existingIndex = newCart.findIndex(item => 
+        const existingIndex = newCart.findIndex(item =>
             (item.id || item._id) === productId && !item.variantIndex
         );
 
@@ -395,9 +437,9 @@ const BillingPage = () => {
         const price = variant.price || 0;
 
         let newCart = [...currentBill.cart];
-        
+
         // Check if this exact variant is already in cart
-        const existingIndex = newCart.findIndex(item => 
+        const existingIndex = newCart.findIndex(item =>
             (item.id || item._id) === productId && item.variantIndex === variantIndex
         );
 

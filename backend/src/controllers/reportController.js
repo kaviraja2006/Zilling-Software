@@ -39,6 +39,12 @@ const getDailyTrend = async (model, match, field = 'total', days = 14) => { // F
     return trend.map(t => ({ date: t._id, value: t.value }));
 };
 
+// Helper to calculate percentage growth
+const calculateGrowth = (current, previous) => {
+    if (previous === 0) return current > 0 ? 100 : 0;
+    return parseFloat((((current - previous) / previous) * 100).toFixed(1));
+};
+
 // @desc    Get dashboard stats (Enhanced with Sparklines & Comparisons)
 // @route   GET /reports/dashboard
 // @access  Private
@@ -49,7 +55,6 @@ const getDashboardStats = asyncHandler(async (req, res) => {
     const dateMatch = buildDateMatch(userId, startDate, endDate);
 
     // Previous Period Logic
-    // Previous Period Logic
     let prevMatch;
     if (startDate && endDate) {
         const start = new Date(startDate);
@@ -59,9 +64,9 @@ const getDashboardStats = asyncHandler(async (req, res) => {
         const prevStartDate = new Date(prevEndDate.getTime() - duration);
         prevMatch = buildDateMatch(userId, prevStartDate.toISOString(), prevEndDate.toISOString());
     } else {
-        // "All Time" case (or no specific range provided)
-        // Previous period for "All Time" is logically 0 or undefined.
-        // We set a match that returns nothing to ensure prev = 0.
+        // "All Time" case
+        // If no date range, we can't really calculate "prev period" growth meaningfully without a default (e.g. last 30 days).
+        // But let's assume if they ask for "All Time", comparison is 0.
         prevMatch = { _id: new mongoose.Types.ObjectId() }; // Impossible ID match
     }
 
@@ -70,8 +75,7 @@ const getDashboardStats = asyncHandler(async (req, res) => {
         currentSalesResult, prevSalesResult,
         currentOrders, prevOrders,
         currentExpensesResult, prevExpensesResult,
-        salesTrend,
-        paidOrders
+        salesTrend
     ] = await Promise.all([
         Invoice.aggregate([{ $match: dateMatch }, { $group: { _id: null, total: { $sum: "$total" } } }]),
         Invoice.aggregate([{ $match: prevMatch }, { $group: { _id: null, total: { $sum: "$total" } } }]),
@@ -79,56 +83,49 @@ const getDashboardStats = asyncHandler(async (req, res) => {
         Invoice.countDocuments(prevMatch),
         Expense.aggregate([{ $match: dateMatch }, { $group: { _id: null, total: { $sum: "$amount" } } }]),
         Expense.aggregate([{ $match: prevMatch }, { $group: { _id: null, total: { $sum: "$amount" } } }]),
-        getDailyTrend(Invoice, dateMatch, 'total'),
-        Invoice.countDocuments({ ...dateMatch, status: 'Paid' })
+        getDailyTrend(Invoice, dateMatch, 'total')
     ]);
 
     const salesVal = currentSalesResult[0]?.total || 0;
+    const prevSalesVal = prevSalesResult[0]?.total || 0;
+
     const expenseVal = currentExpensesResult[0]?.total || 0;
+    const prevExpenseVal = prevExpensesResult[0]?.total || 0;
+
     const profitVal = salesVal - expenseVal;
-
-    // Ratios (Out of 100%)
-    // Sales: Profit Margin %
-    const salesRatio = salesVal > 0 ? (profitVal / salesVal) * 100 : 0;
-
-    // Orders: Completion Rate (Paid Orders / Total Orders)
-    const ordersRatio = currentOrders > 0 ? (paidOrders / currentOrders) * 100 : 0;
-
-    // Expenses: Expense Ratio (Expenses / Sales)
-    // If expenses > sales, max at 100 for display safety
-    const expensesRatio = salesVal > 0 ? Math.min(100, (expenseVal / salesVal) * 100) : (expenseVal > 0 ? 100 : 0);
+    const prevProfitVal = prevSalesVal - prevExpenseVal;
 
     const stats = {
         sales: {
             value: salesVal,
-            prev: prevSalesResult[0]?.total || 0,
-            change: parseFloat(salesRatio.toFixed(1)),
+            prev: prevSalesVal,
+            change: calculateGrowth(salesVal, prevSalesVal),
             sparkline: salesTrend
         },
         orders: {
             value: currentOrders || 0,
             prev: prevOrders || 0,
-            change: parseFloat(ordersRatio.toFixed(1))
+            change: calculateGrowth(currentOrders, prevOrders)
         },
         expenses: {
             value: expenseVal,
-            prev: prevExpensesResult[0]?.total || 0,
-            change: parseFloat(expensesRatio.toFixed(1))
+            prev: prevExpenseVal,
+            change: calculateGrowth(expenseVal, prevExpenseVal)
         },
         netProfit: {
             value: profitVal,
-            prev: (prevSalesResult[0]?.total || 0) - (prevExpensesResult[0]?.total || 0),
-            change: parseFloat(salesRatio.toFixed(1)) // Reuse Profit Margin
+            prev: prevProfitVal,
+            change: calculateGrowth(profitVal, prevProfitVal)
         },
         aov: {
             value: currentOrders > 0 ? salesVal / currentOrders : 0,
-            prev: prevOrders > 0 ? (prevSalesResult[0]?.total || 0) / prevOrders : 0,
-            change: 0
+            prev: prevOrders > 0 ? prevSalesVal / prevOrders : 0,
+            change: 0 // AOV change not strictly required but could be calculated
         }
     };
 
-    // No longer calculating trends here, as we are sending specific Ratios calculated above.
-    // Object.keys(stats).forEach... removed.
+    // Calculate AOV change
+    stats.aov.change = calculateGrowth(stats.aov.value, stats.aov.prev);
 
     res.json(stats);
 });
