@@ -12,6 +12,8 @@ import ProductToolbar from './components/ProductToolbar';
 import ProductInsights from './components/ProductInsights';
 import { read, utils, writeFile } from 'xlsx';
 
+import ProductTemplateWizard from './ProductTemplateWizard';
+
 const ProductsPage = () => {
     const { products, addProduct, addManyProducts, updateProduct, deleteProduct, loading } = useProducts();
     const { settings } = useSettings();
@@ -268,6 +270,9 @@ const ProductsPage = () => {
         }
     };
 
+    // State for template wizard
+    const [showTemplateWizard, setShowTemplateWizard] = useState(false);
+
     return (
         <div className="flex h-[calc(100vh-64px)] overflow-hidden">
             {/* Main Content Area */}
@@ -293,6 +298,18 @@ const ProductsPage = () => {
                                         <Upload className="mr-2 h-4 w-4" /> Import
                                     </Button>
                                 </div>
+
+                                {/* Template Button */}
+                                <Button
+                                    variant="outline"
+                                    className="bg-white hover:bg-slate-50 border-slate-200 text-slate-600 shadow-sm"
+                                    onClick={() => setShowTemplateWizard(true)}
+                                    title="Show Excel Template for Product Import"
+                                >
+                                    <Download className="mr-2 h-4 w-4" /> Template
+                                </Button>
+            {/* Product Import Template Wizard Popup */}
+            <ProductTemplateWizard open={showTemplateWizard} onClose={() => setShowTemplateWizard(false)} />
 
                                 {/* Selection/Export Toggle & Trigger */}
                                 <Button
