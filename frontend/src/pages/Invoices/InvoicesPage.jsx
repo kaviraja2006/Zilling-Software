@@ -759,11 +759,13 @@ const InvoicesPage = () => {
 
                         {/* Actions Grid */}
                         <div className="grid grid-cols-2 gap-2">
-                            <Button variant="outline" size="sm" onClick={() => setIsModalOpen(true)}>
-                                <Printer className="mr-2 h-3 w-3" /> Print
-                            </Button>
-                            <Button variant="outline" size="sm" onClick={() => alert("Email sent!")}>
-                                <Mail className="mr-2 h-3 w-3" /> Email
+                            <Button 
+                                variant="outline" 
+                                size="sm" 
+                                className="col-span-2 w-full py-3 text-base font-semibold" 
+                                onClick={() => setIsModalOpen(true)}
+                            >
+                                <Printer className="mr-2 h-4 w-4" /> Print
                             </Button>
                             {selectedInvoice.status !== 'Paid' && (
                                 <Button
@@ -775,14 +777,6 @@ const InvoicesPage = () => {
                                     <CheckCircle className="mr-2 h-3 w-3" /> Mark Fully Paid
                                 </Button>
                             )}
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                className={`col-span-2 ${selectedInvoice.isLocked ? 'bg-slate-100' : 'text-amber-600 border-amber-200 hover:bg-amber-50'}`}
-                                onClick={() => handleRestApiAction('update', selectedInvoice.id, { isLocked: !selectedInvoice.isLocked })}
-                            >
-                                <Lock className="mr-2 h-3 w-3" /> {selectedInvoice.isLocked ? 'Unlock Invoice' : 'Lock Invoice'}
-                            </Button>
                         </div>
 
                         {/* Customer */}
@@ -822,23 +816,6 @@ const InvoicesPage = () => {
                             </div>
                         </div>
 
-                        {/* Internal Notes */}
-                        <div>
-                            <h3 className="text-sm font-semibold text-slate-900 mb-2 flex items-center gap-2">
-                                <FileText size={14} /> Internal Notes
-                            </h3>
-                            <textarea
-                                className="w-full border rounded-md p-2 text-sm text-slate-700 focus:ring-2 focus:ring-blue-500 outline-none"
-                                rows={3}
-                                placeholder="Add internal notes..."
-                                defaultValue={selectedInvoice.internalNotes}
-                                onBlur={(e) => {
-                                    if (e.target.value !== selectedInvoice.internalNotes) {
-                                        handleRestApiAction('update', selectedInvoice.id, { internalNotes: e.target.value });
-                                    }
-                                }}
-                            />
-                        </div>
                     </div>
                 </div>
             )}

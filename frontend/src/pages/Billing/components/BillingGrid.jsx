@@ -18,7 +18,7 @@ const BillingGrid = ({ cart, updateQuantity, removeItem, selectedItemId, onRowCl
                         <TableHead className="text-right">PRICE/UNIT(₹)<br /><span className="text-xs text-slate-400 font-normal">Without Tax</span></TableHead>
                         <TableHead className="text-center w-24">DISC %</TableHead>
                         <TableHead className="text-right">DISCOUNT<br />(₹)</TableHead>
-                        <TableHead className="text-right">TAX<br />APPLIED(₹)</TableHead>
+                        <TableHead className="text-right">TAX<br />APPLIED(₹)<br /><span className="text-xs text-slate-400 font-normal">% per item</span></TableHead>
                         <TableHead className="text-right">TOTAL(₹)</TableHead>
                         <TableHead className="w-24 text-center">ACTIONS</TableHead>
                     </TableRow>
@@ -85,7 +85,10 @@ const BillingGrid = ({ cart, updateQuantity, removeItem, selectedItemId, onRowCl
                                     ) : '-'}
                                 </TableCell>
                                 <TableCell className="text-right text-green-600 font-medium">{item.discount > 0 ? `₹${item.discount.toFixed(2)}` : '0.00'}</TableCell>
-                                <TableCell className="text-right text-slate-500">₹{((Math.max(0, (item.price || 0) * item.quantity - (item.discount || 0))) * (item.taxRate || 0) / 100).toFixed(2)}</TableCell>
+                                <TableCell className="text-right text-slate-500">
+                                    ₹{((Math.max(0, (item.price || 0) * item.quantity - (item.discount || 0))) * (item.taxRate || 0) / 100).toFixed(2)}
+                                    {item.taxRate ? <span className="ml-1 text-xs text-blue-600 font-semibold">({item.taxRate}%)</span> : null}
+                                </TableCell>
                                 <TableCell className="text-right font-bold text-lg">₹{item.total.toFixed(2)}</TableCell>
                                 <TableCell>
                                     <div className="flex items-center justify-center gap-1">

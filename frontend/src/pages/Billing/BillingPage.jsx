@@ -466,7 +466,7 @@ const BillingPage = () => {
                 total: price * quantity,
                 discount: 0,
                 discountPercent: 0,
-                taxRate: product.taxRate || 0
+                taxRate: typeof variant.taxRate !== 'undefined' ? variant.taxRate : (typeof product.taxRate !== 'undefined' ? product.taxRate : 0)
             });
         }
 
