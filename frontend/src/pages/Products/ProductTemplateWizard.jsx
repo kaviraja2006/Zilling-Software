@@ -1,6 +1,7 @@
 import React from 'react';
 import { Modal } from '../../components/ui/Modal';
 import { Button } from '../../components/ui/Button';
+import { downloadProductTemplate } from '../../utils/downloadProductTemplate';
 
 const headers = [
   'NAME', 'SKU', 'BARCODE', 'CATEGORY', 'BRAND', 'PRICE', 'STOCK', 'UNIT', 'STATUS'
@@ -40,7 +41,8 @@ export default function ProductTemplateWizard({ open, onClose }) {
             </tbody>
           </table>
         </div>
-        <div className="flex justify-end">
+        <div className="flex justify-end space-x-2">
+          <Button onClick={downloadProductTemplate} variant="primary">Download Excel</Button>
           <Button onClick={onClose} variant="outline">Close</Button>
         </div>
       </div>
