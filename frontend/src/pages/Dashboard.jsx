@@ -213,7 +213,7 @@ const Dashboard = () => {
     };
 
     return (
-        <div className="space-y-6 animate-in fade-in duration-500" style={{ zoom: 0.9 }}>
+        <div className="space-y-6 animate-in fade-in duration-500">
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
@@ -277,7 +277,7 @@ const Dashboard = () => {
             <div className="grid gap-6 grid-cols-1 lg:grid-cols-3">
 
                 {/* Cash Flow Summary */}
-                <Card className="shadow-md border-none lg:col-span-1 h-[24rem]">
+                <Card className="shadow-md border-none lg:col-span-1 min-h-[18rem] md:h-[24rem]">
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2">
                             <IndianRupee className="h-5 w-5 text-indigo-600" />
@@ -338,7 +338,7 @@ const Dashboard = () => {
 
                 {/* Inventory Detailing Board */}
                 <Card
-                    className="shadow-md border-none lg:col-span-2 h-[24rem] overflow-hidden cursor-pointer hover:shadow-lg transition-all ring-1 ring-transparent hover:ring-primary-main/20 relative group"
+                    className="shadow-md border-none lg:col-span-2 min-h-[20rem] md:h-[24rem] overflow-hidden cursor-pointer hover:shadow-lg transition-all ring-1 ring-transparent hover:ring-primary-main/20 relative group"
                     onClick={() => setIsInventoryModalOpen(true)}
                 >
                     <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-100 p-1.5 rounded-full text-slate-500">
@@ -400,7 +400,7 @@ const Dashboard = () => {
                 isOpen={isInventoryModalOpen}
                 onClose={() => setIsInventoryModalOpen(false)}
                 title="Full Inventory Performance"
-                className="w-[70vw] h-[60vh] max-w-none"
+                className="w-full sm:w-[90vw] md:w-[70vw] h-[80vh] md:h-[60vh] max-w-none"
             >
                 <div className="rounded-md border h-full overflow-y-auto relative bg-white">
                     <Table>

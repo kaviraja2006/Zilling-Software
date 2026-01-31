@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/Table';
-import { Search, Plus, FileText, Edit, Paperclip, Trash2, Download, MoreHorizontal } from 'lucide-react';
+import { Badge } from '../../components/ui/Badge';
+import { Search, Plus, FileText, Edit, Paperclip, Trash2, Download, MoreHorizontal, ChevronDown } from 'lucide-react';
 import ExpenseModal from './components/ExpenseModal';
 import DateRangePicker from '../../components/DateRangePicker/DateRangePicker';
 import CategoryFilter from '../../components/CategoryFilter/CategoryFilter';
@@ -21,6 +22,7 @@ const ExpensesPage = () => {
     const [dateRange, setDateRange] = useState(null);
     const [selectedCategory, setSelectedCategory] = useState(null);
     const [selectedExpenses, setSelectedExpenses] = useState([]);
+    const [showFilters, setShowFilters] = useState(false);
 
     // Filter Logic
     const filteredExpenses = expenses.filter(e => {
@@ -215,31 +217,44 @@ const ExpensesPage = () => {
             </div>
 
             {/* Filters Area */}
-            <div className="flex flex-col sm:flex-row gap-4 bg-white p-4 rounded-lg border border-slate-200 shadow-sm">
-                <div className="relative flex-1">
-                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                    <Input
-                        placeholder="Search by title, category, payment method, or reference..."
-                        className="pl-10"
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                    />
+            <div className="space-y-4">
+                <div className="lg:hidden">
+                    <Button
+                        variant="outline"
+                        className="w-full flex justify-between items-center bg-white border-slate-200"
+                        onClick={() => setShowFilters(!showFilters)}
+                    >
+                        <span className="flex items-center gap-2"><Search className="h-4 w-4" /> Filters & Search</span>
+                        <ChevronDown className={`h-4 w-4 transition-transform ${showFilters ? 'rotate-180' : ''}`} />
+                    </Button>
                 </div>
-                <div className="flex gap-2">
-                    <DateRangePicker
-                        value={dateRange}
-                        onDateRangeChange={setDateRange}
-                    />
-                    <CategoryFilter
-                        expenses={expenses}
-                        value={selectedCategory}
-                        onCategoryChange={setSelectedCategory}
-                    />
+
+                <div className={`${showFilters ? 'flex' : 'hidden'} lg:flex flex-col sm:flex-row gap-4 bg-white p-4 rounded-lg border border-slate-200 shadow-sm transition-all`}>
+                    <div className="relative flex-1">
+                        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                        <Input
+                            placeholder="Search expenses..."
+                            className="pl-10"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                    </div>
+                    <div className="flex flex-col sm:flex-row gap-2">
+                        <DateRangePicker
+                            value={dateRange}
+                            onDateRangeChange={setDateRange}
+                        />
+                        <CategoryFilter
+                            expenses={expenses}
+                            value={selectedCategory}
+                            onCategoryChange={setSelectedCategory}
+                        />
+                    </div>
                 </div>
             </div>
 
-            {/* Expenses Table */}
-            <div className="rounded-lg border border-slate-200 bg-white shadow-sm overflow-hidden">
+            {/* Desktop Expenses Table */}
+            <div className="hidden md:block rounded-lg border border-slate-200 bg-white shadow-sm overflow-hidden">
                 <div className="overflow-x-auto">
                     <Table>
                         <TableHeader>
@@ -362,6 +377,63 @@ const ExpensesPage = () => {
                         </TableBody>
                     </Table>
                 </div>
+            </div>
+
+            {/* Mobile Expenses List */}
+            <div className="md:hidden space-y-4">
+                {filteredExpenses.map((expense) => (
+                    <div
+                        key={expense.id}
+                        className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm relative active:bg-slate-50 transition-colors"
+                        onClick={() => handleEdit(expense)}
+                    >
+                        <div className="flex justify-between items-start mb-2">
+                            <div className="flex gap-2 items-center">
+                                <input
+                                    type="checkbox"
+                                    checked={selectedExpenses.includes(expense.id)}
+                                    onChange={(e) => {
+                                        e.stopPropagation();
+                                        toggleSelectExpense(expense.id);
+                                    }}
+                                    className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
+                                />
+                                <div>
+                                    <h3 className="font-bold text-slate-900">{expense.title}</h3>
+                                    <p className="text-xs text-slate-500">{new Date(expense.date).toLocaleDateString()}</p>
+                                </div>
+                            </div>
+                            <div className="text-right">
+                                <p className="font-bold text-red-600">-${expense.amount.toFixed(2)}</p>
+                                <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider">
+                                    {expense.category}
+                                </span>
+                            </div>
+                        </div>
+                        <div className="flex justify-between items-center mt-3 pt-3 border-t border-slate-50">
+                            <div className="flex gap-2">
+                                {expense.receiptUrl && (
+                                    <Badge variant="outline" className="text-[10px] bg-blue-50 text-blue-700 border-blue-100">
+                                        <Paperclip className="h-3 w-3 mr-1" /> Receipt
+                                    </Badge>
+                                )}
+                                {expense.isRecurring && (
+                                    <Badge variant="outline" className="text-[10px] bg-purple-50 text-purple-700 border-purple-100">
+                                        Recurring
+                                    </Badge>
+                                )}
+                            </div>
+                            <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400" onClick={() => handleEdit(expense)}>
+                                    <Edit className="h-4 w-4" />
+                                </Button>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 text-rose-500" onClick={() => handleDelete(expense.id)}>
+                                    <Trash2 className="h-4 w-4" />
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+                ))}
             </div>
 
             {/* Bulk Actions Toolbar */}

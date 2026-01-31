@@ -5,7 +5,7 @@ import { Badge } from '../../components/ui/Badge';
 import {
     Calendar, Download, TrendingUp, TrendingDown, FileText, CreditCard,
     IndianRupee, Wallet, Users, Repeat, Layers, PieChart as PieIcon,
-    ArrowUpRight, ArrowDownRight, Share2, Printer, LayoutDashboard, LineChart
+    ArrowUpRight, ArrowDownRight, Share2, Printer, LayoutDashboard, LineChart, ChevronDown
 } from 'lucide-react';
 import {
     AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -25,6 +25,11 @@ const ReportsPage = () => {
     const [dateRange, setDateRange] = useState({ start: '', end: '' });
     const [compare, setCompare] = useState(false);
     const [loading, setLoading] = useState(true);
+    const [isMounted, setIsMounted] = useState(false);
+
+    useEffect(() => {
+        setIsMounted(true);
+    }, []);
 
     const [stats, setStats] = useState({
         dashboard: {
@@ -217,11 +222,13 @@ const ReportsPage = () => {
             <div className="group relative bg-white rounded-xl border border-slate-200 p-5 shadow-sm hover:shadow-md transition-all">
                 <div className="flex justify-between items-start mb-2">
                     <div>
-                        <p className="text-sm font-medium text-slate-500">{title}</p>
-                        <h3 className="text-2xl font-bold text-slate-900 mt-1">{metric.prefix || ''}{typeof metric.value === 'number' ? metric.value.toLocaleString() : metric.value}</h3>
+                        <p className="text-xs md:text-sm font-medium text-slate-500">{title}</p>
+                        <h3 className="text-xl md:text-2xl font-bold text-slate-900 mt-1 break-all">
+                            {metric.prefix || ''}{typeof metric.value === 'number' ? metric.value.toLocaleString() : metric.value}
+                        </h3>
                     </div>
-                    <div className={`p-2 rounded-lg ${colorClass} bg-opacity-10`}>
-                        <Icon className={`h-5 w-5 ${colorClass.replace('bg-', 'text-')}`} />
+                    <div className={`p-2 rounded-lg ${colorClass} bg-opacity-10 shrink-0`}>
+                        <Icon className={`h-4 w-4 md:h-5 md:w-5 ${colorClass.replace('bg-', 'text-')}`} />
                     </div>
                 </div>
 
@@ -235,18 +242,26 @@ const ReportsPage = () => {
 
                 {/* Sparkline (Recharts) */}
                 {metric.sparkline && metric.sparkline.length > 0 && (
-                    <div className="h-10 w-full opacity-50">
-                        <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0} debounce={50}>
-                            <AreaChart data={metric.sparkline}>
-                                <Area type="monotone" dataKey="value" stroke={isPositive ? "#10b981" : "#f43f5e"} fill="transparent" strokeWidth={2} />
-                            </AreaChart>
-                        </ResponsiveContainer>
+                    <div className="h-10 w-full mt-auto relative overflow-hidden">
+                        {isMounted && (
+                            <ResponsiveContainer width="100%" height="100%">
+                                <AreaChart data={metric.sparkline} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
+                                    <Area 
+                                        type="monotone" 
+                                        dataKey="value" 
+                                        stroke={isPositive ? "#10b981" : "#f43f5e"} 
+                                        fill={isPositive ? "rgba(16, 185, 129, 0.05)" : "rgba(244, 63, 94, 0.05)"} 
+                                        strokeWidth={2} 
+                                    />
+                                </AreaChart>
+                            </ResponsiveContainer>
+                        )}
                     </div>
                 )}
 
-                {/* Tooltip on Hover */}
+                {/* Tooltip on Hover / Tap */}
                 {tooltipData && (
-                    <div className="absolute inset-0 bg-white/95 backdrop-blur-sm rounded-xl p-4 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-center border border-slate-200 z-10 pointer-events-none">
+                    <div className="absolute inset-0 bg-white/95 backdrop-blur-sm rounded-xl p-4 opacity-0 group-hover:opacity-100 group-active:opacity-100 transition-opacity flex flex-col justify-center border border-slate-200 z-10 pointer-events-none">
                         <p className="text-xs font-bold text-slate-700 uppercase mb-2">Detailed Breakdown</p>
                         {tooltipData.map((t, i) => (
                             <div key={i} className="flex justify-between text-sm py-1 border-b last:border-0 border-slate-100">
@@ -308,20 +323,24 @@ const ReportsPage = () => {
             {/* Simplified Trend */}
             <Card>
                 <CardHeader><CardTitle>Revenue Trend</CardTitle></CardHeader>
-                <CardContent className="h-64">
-                    <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0} debounce={50}>
-                        <AreaChart data={stats.salesTrend}>
-                            <defs>
-                                <linearGradient id="colorSalesOwner" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="#6366f1" stopOpacity={0.8} />
-                                    <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
-                                </linearGradient>
-                            </defs>
-                            <XAxis dataKey="date" hide />
-                            <Tooltip />
-                            <Area type="monotone" dataKey="sales" stroke="#6366f1" fillOpacity={1} fill="url(#colorSalesOwner)" />
-                        </AreaChart>
-                    </ResponsiveContainer>
+                <CardContent className="h-48 md:h-64 flex flex-col">
+                    <div className="flex-grow w-full min-h-0 relative">
+                        {isMounted && (
+                            <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+                                <AreaChart data={stats.salesTrend}>
+                                    <defs>
+                                        <linearGradient id="colorSalesOwner" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="#6366f1" stopOpacity={0.8} />
+                                            <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+                                        </linearGradient>
+                                    </defs>
+                                    <XAxis dataKey="date" hide />
+                                    <Tooltip />
+                                    <Area type="monotone" dataKey="sales" stroke="#6366f1" fillOpacity={1} fill="url(#colorSalesOwner)" />
+                                </AreaChart>
+                            </ResponsiveContainer>
+                        )}
+                    </div>
                 </CardContent>
             </Card>
         </div>
@@ -377,50 +396,57 @@ const ReportsPage = () => {
                             </Badge>
                         </div>
                     </CardHeader>
-                    <CardContent className="h-80">
-                        <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0} debounce={50}>
-                            <AreaChart data={stats.salesTrend}>
-                                <defs>
-                                    <linearGradient id="colSal" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.8} />
-                                        <stop offset="95%" stopColor="#4f46e5" stopOpacity={0} />
-                                    </linearGradient>
-                                </defs>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                                <XAxis dataKey="date" tick={{ fontSize: 12 }} />
-                                <YAxis yAxisId="left" tick={{ fontSize: 12 }} />
-                                <YAxis yAxisId="right" orientation="right" hide />
-                                <Tooltip />
-                                <Area yAxisId="left" type="monotone" dataKey="sales" stroke="#4f46e5" fillOpacity={1} fill="url(#colSal)" />
-                                {/* Ghost Line for comparison could be overlaid here if data structure supported it */}
-                            </AreaChart>
-                        </ResponsiveContainer>
+                    <CardContent className="h-64 md:h-80 flex flex-col">
+                        <div className="flex-grow w-full min-h-0 relative">
+                            {isMounted && (
+                                <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+                                    <AreaChart data={stats.salesTrend}>
+                                        <defs>
+                                            <linearGradient id="colSal" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.8} />
+                                                <stop offset="95%" stopColor="#4f46e5" stopOpacity={0} />
+                                            </linearGradient>
+                                        </defs>
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                                        <XAxis dataKey="date" tick={{ fontSize: 12 }} />
+                                        <YAxis yAxisId="left" tick={{ fontSize: 12 }} />
+                                        <YAxis yAxisId="right" orientation="right" hide />
+                                        <Tooltip />
+                                        <Area yAxisId="left" type="monotone" dataKey="sales" stroke="#4f46e5" fillOpacity={1} fill="url(#colSal)" />
+                                    </AreaChart>
+                                </ResponsiveContainer>
+                            )}
+                        </div>
                     </CardContent>
                 </Card>
 
                 <Card>
                     <CardHeader><CardTitle>Payment Methods</CardTitle></CardHeader>
-                    <CardContent className="h-80 relative">
-                        <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0} debounce={50}>
-                            <PieChart>
-                                <Pie
-                                    data={stats.paymentMethods}
-                                    cx="50%"
-                                    cy="50%"
-                                    innerRadius={60}
-                                    outerRadius={80}
-                                    paddingAngle={5}
-                                    dataKey="value"
-                                    onClick={(data) => setSelectedPaymentMethod(selectedPaymentMethod === data.name ? null : data.name)}
-                                >
-                                    {stats.paymentMethods.map((entry, index) => (
-                                        <Cell key={`cell-${index}`} fill={['#6366f1', '#10b981', '#f59e0b', '#ef4444'][index % 4]} opacity={selectedPaymentMethod && selectedPaymentMethod !== entry.name ? 0.3 : 1} />
-                                    ))}
-                                </Pie>
-                                <Tooltip formatter={(value) => formatCurrency(value)} />
-                                <Legend verticalAlign="bottom" height={36} />
-                            </PieChart>
-                        </ResponsiveContainer>
+                    <CardContent className="h-64 md:h-80 relative flex flex-col">
+                        <div className="flex-grow w-full min-h-0 relative">
+                            {isMounted && (
+                                <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+                                    <PieChart>
+                                        <Pie
+                                            data={stats.paymentMethods}
+                                            cx="50%"
+                                            cy="50%"
+                                            innerRadius={60}
+                                            outerRadius={80}
+                                            paddingAngle={5}
+                                            dataKey="value"
+                                            onClick={(data) => setSelectedPaymentMethod(selectedPaymentMethod === data.name ? null : data.name)}
+                                        >
+                                            {stats.paymentMethods.map((entry, index) => (
+                                                <Cell key={`cell-${index}`} fill={['#6366f1', '#10b981', '#f59e0b', '#ef4444'][index % 4]} opacity={selectedPaymentMethod && selectedPaymentMethod !== entry.name ? 0.3 : 1} />
+                                            ))}
+                                        </Pie>
+                                        <Tooltip formatter={(value) => formatCurrency(value)} />
+                                        <Legend verticalAlign="bottom" height={36} />
+                                    </PieChart>
+                                </ResponsiveContainer>
+                            )}
+                        </div>
                         {/* Center Text */}
                         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none pb-8">
                             <span className="text-xs text-slate-500">Total</span>
@@ -465,21 +491,25 @@ const ReportsPage = () => {
                 {/* Quadrant Chart (Revenue vs Margin) - Simplified as Scatter */}
                 <Card className="lg:col-span-2">
                     <CardHeader><CardTitle>Product Performance Matrix</CardTitle></CardHeader>
-                    <CardContent className="h-64">
-                        <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0} debounce={150}>
-                            <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 30 }}>
-                                <CartesianGrid />
-                                <XAxis type="number" dataKey="marginPercent" name="Margin" unit="%" domain={[0, 'auto']} label={{ value: 'Margin %', position: 'insideBottom', offset: -10 }} />
-                                <YAxis type="number" dataKey="revenue" name="Revenue" unit="₹" label={{ value: 'Revenue', angle: -90, position: 'insideLeft', offset: 10, dx: -10 }} />
-                                <ZAxis type="number" dataKey="quantity" range={[60, 400]} name="Quantity" />
-                                <Tooltip cursor={{ strokeDasharray: '3 3' }} />
-                                <Scatter name="Products" data={stats.topProducts} fill="#8884d8">
-                                    {stats.topProducts.map((entry, index) => (
-                                        <Cell key={`cell-${index}`} fill={entry.marginPercent > 30 ? (entry.revenue > 5000 ? '#10b981' : '#f59e0b') : '#ef4444'} />
-                                    ))}
-                                </Scatter>
-                            </ScatterChart>
-                        </ResponsiveContainer>
+                    <CardContent className="h-64 flex flex-col">
+                        <div className="flex-grow w-full min-h-0 relative">
+                            {isMounted && (
+                                <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+                                    <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 30 }}>
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                                        <XAxis type="number" dataKey="marginPercent" name="Margin" unit="%" domain={[0, 'auto']} label={{ value: 'Margin %', position: 'insideBottom', offset: -10 }} />
+                                        <YAxis type="number" dataKey="revenue" name="Revenue" unit="₹" label={{ value: 'Revenue', angle: -90, position: 'insideLeft', offset: 10, dx: -10 }} />
+                                        <ZAxis type="number" dataKey="quantity" range={[60, 400]} name="Quantity" />
+                                        <Tooltip cursor={{ strokeDasharray: '3 3' }} />
+                                        <Scatter name="Products" data={stats.topProducts} fill="#8884d8">
+                                            {stats.topProducts.map((entry, index) => (
+                                                <Cell key={`cell-${index}`} fill={entry.marginPercent > 30 ? (entry.revenue > 5000 ? '#10b981' : '#f59e0b') : '#ef4444'} />
+                                            ))}
+                                        </Scatter>
+                                    </ScatterChart>
+                                </ResponsiveContainer>
+                            )}
+                        </div>
                     </CardContent>
                 </Card>
             </div>
@@ -489,12 +519,12 @@ const ReportsPage = () => {
                 <CardHeader className="border-b bg-slate-50/50 py-3">
                     <div className="flex items-center justify-between">
                         <CardTitle>Top Performers</CardTitle>
-                        <div className="flex gap-2">
+                        <div className="flex gap-1 overflow-x-auto no-scrollbar -mr-4 pr-4">
                             {['product', 'category', 'brand'].map(tab => (
                                 <button
                                     key={tab}
                                     onClick={() => setTopProductsTab(tab)}
-                                    className={`text-xs px-3 py-1.5 rounded-full font-medium transition-colors ${topProductsTab === tab ? 'bg-indigo-100 text-indigo-700' : 'text-slate-500 hover:bg-slate-100'}`}
+                                    className={`text-[10px] md:text-xs px-2.5 md:px-3 py-1.5 rounded-full font-semibold whitespace-nowrap transition-all ${topProductsTab === tab ? 'bg-primary-main text-white shadow-sm' : 'text-slate-500 hover:bg-slate-100'}`}
                                 >
                                     {tab.charAt(0).toUpperCase() + tab.slice(1)}s
                                 </button>
@@ -515,12 +545,14 @@ const ReportsPage = () => {
                             </thead>
                             <tbody className="divide-y divide-slate-100">
                                 {stats.topProducts.map((p, i) => (
-                                    <tr key={i} className="hover:bg-slate-50/50">
-                                        <td className="px-4 py-3 font-medium text-slate-800">{p.name}</td>
-                                        <td className="px-4 py-3 text-right">{formatCurrency(p.revenue)}</td>
-                                        <td className="px-4 py-3 text-right">{p.quantity}</td>
-                                        <td className="px-4 py-3 text-right">
-                                            <span className={`px-2 py-0.5 rounded text-xs ${p.marginPercent > 30 ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
+                                    <tr key={i} className="hover:bg-slate-50/50 transition-colors">
+                                        <td className="px-3 md:px-4 py-3">
+                                            <p className="font-semibold text-slate-800 line-clamp-1">{p.name}</p>
+                                        </td>
+                                        <td className="px-3 md:px-4 py-3 text-right font-medium text-slate-900">{formatCurrency(p.revenue)}</td>
+                                        <td className="px-3 md:px-4 py-3 text-right text-slate-500">{p.quantity}</td>
+                                        <td className="px-3 md:px-4 py-3 text-right">
+                                            <span className={`px-2 py-0.5 rounded text-[10px] md:text-xs font-bold ${p.marginPercent > 30 ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
                                                 {formatPercent(p.marginPercent)}
                                             </span>
                                         </td>
@@ -540,36 +572,39 @@ const ReportsPage = () => {
             <div className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-slate-200 -mx-6 px-6 py-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 md:gap-0 mb-6 transition-all">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full md:w-auto">
                     <h1 className="text-2xl font-bold text-slate-900">Analytics</h1>
-                    <div className="flex bg-slate-100 p-1 rounded-lg w-full sm:w-auto">
+                    <div className="flex bg-slate-100 p-1 rounded-xl w-full sm:w-auto overflow-hidden shadow-inner">
                         <button
-                            className={`flex-1 sm:flex-none px-3 py-1 text-xs font-medium rounded-md transition-all ${viewMode === 'analyst' ? 'bg-white shadow text-slate-900' : 'text-slate-500'}`}
+                            className={`flex-1 sm:flex-none px-4 py-1.5 text-xs font-bold rounded-lg transition-all ${viewMode === 'analyst' ? 'bg-white shadow-sm text-primary-main' : 'text-slate-500 hover:text-slate-700'}`}
                             onClick={() => setViewMode('analyst')}
                         >
-                            <LineChart className="h-3 w-3 inline mr-1" /> Detailed
+                            <LineChart className="h-3.5 w-3.5 inline mr-1.5" /> Detailed
                         </button>
                         <button
-                            className={`flex-1 sm:flex-none px-3 py-1 text-xs font-medium rounded-md transition-all ${viewMode === 'owner' ? 'bg-white shadow text-slate-900' : 'text-slate-500'}`}
+                            className={`flex-1 sm:flex-none px-4 py-1.5 text-xs font-bold rounded-lg transition-all ${viewMode === 'owner' ? 'bg-white shadow-sm text-primary-main' : 'text-slate-500 hover:text-slate-700'}`}
                             onClick={() => setViewMode('owner')}
                         >
-                            <LayoutDashboard className="h-3 w-3 inline mr-1" /> Owner Summary
+                            <LayoutDashboard className="h-3.5 w-3.5 inline mr-1.5" /> Summary
                         </button>
                     </div>
                 </div>
 
-                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full md:w-auto">
+                <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
                     {/* Date Controls */}
-                    <select
-                        className="bg-slate-50 border border-slate-200 text-sm rounded-md px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-500 w-full sm:w-auto"
-                        value={datePreset}
-                        onChange={(e) => setDatePreset(e.target.value)}
-                    >
-                        <option value="today">Today</option>
-                        <option value="thisWeek">This Week</option>
-                        <option value="thisMonth">This Month</option>
-                        <option value="allTime">All Time</option>
-                    </select>
+                    <div className="relative flex-grow sm:flex-grow-0">
+                        <select
+                            className="appearance-none bg-slate-50 border border-slate-200 text-xs md:text-sm font-semibold rounded-xl px-4 py-2 pr-10 outline-none focus:ring-2 focus:ring-primary-main w-full h-10 transition-all hover:bg-white"
+                            value={datePreset}
+                            onChange={(e) => setDatePreset(e.target.value)}
+                        >
+                            <option value="today">Today</option>
+                            <option value="thisWeek">This Week</option>
+                            <option value="thisMonth">This Month</option>
+                            <option value="allTime">All Time</option>
+                        </select>
+                        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+                    </div>
 
-                    <Button variant="outline" size="sm" className="w-full sm:w-auto" onClick={() => handleExport(viewMode === 'owner' ? 'summary' : 'detailed')}>
+                    <Button variant="default" size="sm" className="bg-primary-main hover:bg-primary-dark text-white font-bold flex-grow sm:flex-grow-0 h-10 px-5 rounded-xl shadow-lg shadow-primary-main/20 transition-all active:scale-95" onClick={() => handleExport(viewMode === 'owner' ? 'summary' : 'detailed')}>
                         <Download className="mr-2 h-4 w-4" /> Export
                     </Button>
                 </div>

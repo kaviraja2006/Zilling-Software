@@ -4,7 +4,7 @@ import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/Table';
 import { Badge } from '../../components/ui/Badge';
-import { Search, Filter, Eye, Download, Trash2, Calendar, MoreHorizontal, Lock, FileText, CheckCircle, XCircle, Printer, CreditCard, Save, X, RotateCcw, BarChart3, Columns, Mail } from 'lucide-react';
+import { Search, Filter, Eye, Download, Trash2, Calendar, MoreHorizontal, Lock, FileText, CheckCircle, XCircle, Printer, CreditCard, Save, X, RotateCcw, BarChart3, Columns, Mail, ChevronDown } from 'lucide-react';
 import services from '../../services/api';
 import InvoiceDetailsModal from './InvoiceDetailsModal';
 import { utils, writeFile } from 'xlsx';
@@ -26,8 +26,13 @@ const InvoicesPage = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedIds, setSelectedIds] = useState([]);
     const [refreshTrigger, setRefreshTrigger] = useState(0);
+    const [isMounted, setIsMounted] = useState(false);
     const { refreshProducts } = useProducts();
     const { refreshCustomers } = useCustomers();
+
+    useEffect(() => {
+        setIsMounted(true);
+    }, []);
 
     // Advanced Features State
     const [savedViews, setSavedViews] = useState([]);
@@ -274,34 +279,61 @@ const InvoicesPage = () => {
 
         return (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                <Card className="p-4 border-none shadow-sm h-48">
-                    <p className="text-xs font-semibold text-slate-500 uppercase mb-2">Sales Trend</p>
-                    <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0} debounce={50}>
-                        <AreaChart data={trendData}>
-                            <defs>
-                                <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="#8884d8" stopOpacity={0.8} />
-                                    <stop offset="95%" stopColor="#8884d8" stopOpacity={0} />
-                                </linearGradient>
-                            </defs>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                            <XAxis dataKey="name" tick={{ fontSize: 10 }} />
-                            <YAxis hide />
-                            <Tooltip />
-                            <Area type="monotone" dataKey="sales" stroke="#8884d8" fillOpacity={1} fill="url(#colorSales)" />
-                        </AreaChart>
-                    </ResponsiveContainer>
+                <Card className="border-none shadow-sm overflow-hidden bg-white">
+                    <CardContent className="p-4 h-[220px] md:h-[280px] flex flex-col">
+                        <p className="text-xs font-semibold text-slate-500 uppercase mb-3 tracking-wider">Sales Trend</p>
+                        <div className="flex-grow w-full min-h-0 relative">
+                            {isMounted && (
+                                <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+                                    <AreaChart data={trendData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
+                                    <defs>
+                                        <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="#8884d8" stopOpacity={0.8} />
+                                            <stop offset="95%" stopColor="#8884d8" stopOpacity={0} />
+                                        </linearGradient>
+                                    </defs>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                                    <XAxis 
+                                        dataKey="name" 
+                                        tick={{ fontSize: 10, fill: '#94a3b8' }} 
+                                        axisLine={false}
+                                        tickLine={false}
+                                    />
+                                    <YAxis hide />
+                                    <Tooltip 
+                                        contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                                    />
+                                    <Area type="monotone" dataKey="sales" stroke="#8884d8" strokeWidth={2} fillOpacity={1} fill="url(#colorSales)" />
+                                </AreaChart>
+                                </ResponsiveContainer>
+                            )}
+                        </div>
+                    </CardContent>
                 </Card>
-                <Card className="p-4 border-none shadow-sm h-48">
-                    <p className="text-xs font-semibold text-slate-500 uppercase mb-2">Payment Methods</p>
-                    <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0} debounce={50}>
-                        <BarChart data={data}>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                            <XAxis dataKey="_id" tick={{ fontSize: 10 }} />
-                            <Tooltip cursor={{ fill: 'transparent' }} />
-                            <Bar dataKey="totalAmount" fill="#0ea5e9" radius={[4, 4, 0, 0]} barSize={40} />
-                        </BarChart>
-                    </ResponsiveContainer>
+                <Card className="border-none shadow-sm overflow-hidden bg-white">
+                    <CardContent className="p-4 h-[220px] md:h-[280px] flex flex-col">
+                        <p className="text-xs font-semibold text-slate-500 uppercase mb-3 tracking-wider">Payment Methods</p>
+                        <div className="flex-grow w-full min-h-0 relative">
+                            {isMounted && (
+                                <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+                                    <BarChart data={data} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                                    <XAxis 
+                                        dataKey="_id" 
+                                        tick={{ fontSize: 10, fill: '#94a3b8' }} 
+                                        axisLine={false}
+                                        tickLine={false}
+                                    />
+                                    <Tooltip 
+                                        cursor={{ fill: '#f8fafc' }}
+                                        contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                                    />
+                                    <Bar dataKey="totalAmount" fill="#0ea5e9" radius={[4, 4, 0, 0]} barSize={32} />
+                                </BarChart>
+                                </ResponsiveContainer>
+                            )}
+                        </div>
+                    </CardContent>
                 </Card>
             </div>
         );
@@ -312,23 +344,23 @@ const InvoicesPage = () => {
             {/* Header */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold text-slate-900">Invoices</h1>
-                    <div className="flex items-center gap-2 mt-1">
-                        <span className="text-sm font-medium text-slate-500 px-2 py-0.5 bg-slate-100 rounded-md border border-slate-200">
+                    <h1 className="text-2xl md:text-3xl font-bold text-slate-900 leading-tight">Invoices</h1>
+                    <div className="flex items-center gap-1.5 mt-2 overflow-x-auto no-scrollbar pb-1 snap-x">
+                        <span className="shrink-0 text-[10px] md:text-sm font-semibold text-slate-500 px-2 py-1 bg-slate-100 rounded-lg border border-slate-200 snap-start">
                             Total: {stats.summary.totalInvoices}
                         </span>
-                        <span className="text-sm font-medium text-emerald-600 px-2 py-0.5 bg-emerald-50 rounded-md border border-emerald-100">
-                            Sales: ₹{stats.summary.totalSales.toFixed(0)}
+                        <span className="shrink-0 text-[10px] md:text-sm font-bold text-emerald-600 px-2 py-1 bg-emerald-50 rounded-lg border border-emerald-100 snap-start">
+                            Sales: ₹{stats.summary.totalSales.toLocaleString()}
                         </span>
-                        <span className="text-sm font-medium text-amber-600 px-2 py-0.5 bg-amber-50 rounded-md border border-amber-100">
-                            Due: ₹{stats.summary.outstandingAmount.toFixed(0)}
+                        <span className="shrink-0 text-[10px] md:text-sm font-bold text-amber-600 px-2 py-1 bg-amber-50 rounded-lg border border-amber-100 snap-start">
+                            Due: ₹{stats.summary.outstandingAmount.toLocaleString()}
                         </span>
                     </div>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-2 w-full md:w-auto">
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                            <Button variant="outline">
+                            <Button variant="outline" className="flex-1 md:flex-none h-10">
                                 <Columns className="mr-2 h-4 w-4" /> Columns
                             </Button>
                         </DropdownMenuTrigger>
@@ -346,7 +378,7 @@ const InvoicesPage = () => {
                             ))}
                         </DropdownMenuContent>
                     </DropdownMenu>
-                    <Button variant="outline" onClick={handleExport}>
+                    <Button variant="outline" className="flex-1 md:flex-none h-10" onClick={handleExport}>
                         <Download className="mr-2 h-4 w-4" /> Export
                     </Button>
                 </div>
@@ -354,7 +386,7 @@ const InvoicesPage = () => {
 
             {/* Quick Tabs & Saved Views */}
             <div className="flex justify-between items-center border-b border-slate-200">
-                <div className="flex gap-1 overflow-x-auto pb-2 no-scrollbar">
+                <div className="flex gap-1 overflow-x-auto pb-2 no-scrollbar snap-x">
                     {[
                         { label: 'All Invoices', id: 'all' },
                         { label: 'Today', id: 'today' },
@@ -368,31 +400,31 @@ const InvoicesPage = () => {
                                 else if (tab.id === 'cancelled') setFilters(prev => ({ ...prev, dateRange: 'all', status: ['Cancelled'] }));
                                 else setFilters(prev => ({ ...prev, dateRange: tab.id, status: [] }));
                             }}
-                            className={`px-4 py-2 text-sm font-medium whitespace-nowrap rounded-t-lg transition-colors border-b-2 
+                            className={`px-4 py-2 text-sm font-semibold whitespace-nowrap rounded-t-lg transition-all border-b-2 snap-start
                                 ${(filters.dateRange === tab.id && (!tab.filter || JSON.stringify(filters.status) === JSON.stringify(tab.filter.status)))
                                     ? 'border-primary-main text-primary-main bg-primary-50/50'
-                                    : 'border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-50'}`}
+                                    : 'border-transparent text-slate-500 hover:text-slate-900 hover:bg-slate-50'}`}
                         >
                             {tab.label}
                         </button>
                     ))}
                     {savedViews.map((view, index) => (
-                        <div key={index} className="group flex items-center bg-slate-100 rounded-t-lg border-b-2 border-transparent hover:bg-slate-200">
+                        <div key={index} className="group flex items-center bg-slate-100 rounded-t-lg border-b-2 border-transparent hover:bg-slate-200 snap-start">
                             <button
                                 onClick={() => loadView(view)}
-                                className="px-3 py-2 text-sm font-medium text-slate-600 whitespace-nowrap"
+                                className="px-3 py-2 text-sm font-semibold text-slate-600 whitespace-nowrap"
                             >
                                 {view.name}
                             </button>
-                            <button onClick={() => deleteView(index)} className="pr-2 text-slate-400 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button onClick={() => deleteView(index)} className="pr-2 text-slate-400 hover:text-rose-500 opacity-100 transition-opacity">
                                 <X size={12} />
                             </button>
                         </div>
                     ))}
                 </div>
-                <div className="pb-2">
-                    <Button variant="ghost" size="sm" onClick={() => setShowSaveViewInput(!showSaveViewInput)}>
-                        <Save size={14} className="mr-1" /> Save View
+                <div className="pb-2 border-b-2 border-transparent">
+                    <Button variant="ghost" size="sm" className="h-8 text-[11px] md:text-sm" onClick={() => setShowSaveViewInput(!showSaveViewInput)}>
+                        <Save size={14} className="mr-1 hidden sm:inline" /> Save View
                     </Button>
                 </div>
             </div>
@@ -414,12 +446,30 @@ const InvoicesPage = () => {
             {renderChart()}
 
             {/* Main Content Area */}
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+            <div className="flex flex-col lg:grid lg:grid-cols-4 gap-6">
 
                 {/* Left Filter Sidebar */}
                 <div className="lg:col-span-1 space-y-4">
-                    <Card className="sticky top-6">
-                        <CardHeader className="pb-3">
+                    {/* Filter Button (Mobile Only) */}
+                    <div className="lg:hidden">
+                        <Button
+                            variant="outline"
+                            className="w-full flex justify-between items-center bg-white border-slate-200 shadow-sm"
+                            onClick={() => {
+                                const el = document.getElementById('filter-section');
+                                el.classList.toggle('hidden');
+                                if (!el.classList.contains('hidden')) {
+                                    el.scrollIntoView({ behavior: 'smooth' });
+                                }
+                            }}
+                        >
+                            <span className="flex items-center gap-2"><Filter className="h-4 w-4 text-primary-main" /> Filters & Search</span>
+                            <ChevronDown className="h-4 w-4 text-slate-400" />
+                        </Button>
+                    </div>
+
+                    <Card id="filter-section" className="hidden lg:block sticky top-6">
+                        <CardHeader className="pb-3 px-4">
                             <CardTitle className="text-base flex items-center justify-between">
                                 <span className="flex items-center gap-2"><Filter className="h-4 w-4" /> Filters</span>
                                 <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={() => setFilters({ search: '', dateRange: 'all', startDate: '', endDate: '', status: [], paymentMethod: 'All', minAmount: '', maxAmount: '' })}>
@@ -535,32 +585,39 @@ const InvoicesPage = () => {
                 <div className="lg:col-span-3 space-y-4">
                     {/* Bulk Selection Bar */}
                     {selectedIds.length > 0 && (
-                        <div className="bg-slate-900 text-white px-4 py-3 rounded-lg flex items-center justify-between shadow-lg animate-in slide-in-from-bottom-5 sticky top-6 z-20">
-                            <span className="text-sm font-medium">{selectedIds.length} select</span>
-                            <div className="flex gap-2 items-center">
-                                <Button size="sm" variant="ghost" className="h-8 text-white hover:bg-slate-800" onClick={() => setSelectedIds([])}>
+                        <div className="bg-slate-900 text-white px-3 md:px-4 py-3 rounded-xl flex flex-col md:flex-row items-center justify-between gap-3 shadow-xl animate-in slide-in-from-bottom-5 sticky top-4 md:top-6 z-30 mx-2 md:mx-0">
+                            <div className="flex items-center justify-between w-full md:w-auto">
+                                <span className="text-sm font-semibold bg-primary-main/20 text-primary-light px-2 py-0.5 rounded mr-2">{selectedIds.length}</span>
+                                <span className="text-sm font-medium">Invoices Selected</span>
+                                <Button size="sm" variant="ghost" className="md:hidden h-8 text-white/60 hover:text-white" onClick={() => setSelectedIds([])}>
+                                    <X size={14} />
+                                </Button>
+                            </div>
+                            <div className="flex flex-wrap gap-1 md:gap-2 items-center justify-center md:justify-end w-full md:w-auto">
+                                <Button size="sm" variant="ghost" className="hidden md:flex h-9 text-white font-bold hover:bg-slate-800" onClick={() => setSelectedIds([])}>
                                     Clear
                                 </Button>
-                                <div className="h-6 w-px bg-slate-700 mx-2"></div>
-                                <Button size="sm" variant="ghost" className="h-8 text-white hover:bg-slate-800" onClick={() => handleBulkAction('markPaid')}>
-                                    <CheckCircle className="mr-2 h-4 w-4" /> Paid
+                                <div className="hidden md:block h-6 w-px bg-slate-700 mx-1"></div>
+                                <Button size="sm" variant="ghost" className="h-9 md:h-8 flex-1 md:flex-none text-white font-bold hover:bg-slate-800 border border-slate-700 md:border-none" onClick={() => handleBulkAction('markPaid')}>
+                                    <CheckCircle className="mr-1.5 h-4 w-4 text-emerald-400" /> Paid
                                 </Button>
-                                <Button size="sm" variant="ghost" className="h-8 text-white hover:bg-slate-800" onClick={() => handleBulkAction('resend')}>
-                                    <Mail className="mr-2 h-4 w-4" /> Resend
+                                <Button size="sm" variant="ghost" className="h-9 md:h-8 flex-1 md:flex-none text-white font-bold hover:bg-slate-800 border border-slate-700 md:border-none" onClick={() => handleBulkAction('resend')}>
+                                    <Mail className="mr-1.5 h-4 w-4 text-indigo-400" /> Mail
                                 </Button>
-                                <Button size="sm" variant="ghost" className="h-8 text-white hover:bg-slate-800" onClick={handleExport}>
-                                    <Download className="mr-2 h-4 w-4" /> Export
+                                <Button size="sm" variant="ghost" className="h-9 md:h-8 flex-1 md:flex-none text-white font-bold hover:bg-slate-800 border border-slate-700 md:border-none" onClick={handleExport}>
+                                    <Download className="mr-1.5 h-4 w-4 text-slate-400" /> PDF
                                 </Button>
-                                <Button size="sm" variant="ghost" className="h-8 text-white hover:bg-slate-800 text-rose-300 hover:text-rose-200" onClick={() => handleBulkAction('delete')}>
-                                    <Trash2 className="mr-2 h-4 w-4" /> Delete
+                                <Button size="sm" variant="ghost" className="h-9 md:h-8 flex-1 md:flex-none text-rose-300 font-bold hover:bg-rose-900/30 border border-rose-900/50 md:border-none" onClick={() => handleBulkAction('delete')}>
+                                    <Trash2 className="mr-1.5 h-4 w-4" /> Del
                                 </Button>
                             </div>
                         </div>
                     )}
 
-                    <Card className="min-h-[600px] border-none shadow-sm">
+                    <Card className="min-h-[600px] md:min-h-0 border-none shadow-sm md:shadow-none bg-transparent md:bg-white overflow-hidden">
                         <CardContent className="p-0">
-                            <div className="rounded-md border-t border-b md:border overflow-x-auto">
+                            {/* Desktop Table View */}
+                            <div className="hidden md:block rounded-xl border border-slate-200 overflow-x-auto bg-white">
                                 <Table>
                                     <TableHeader>
                                         <TableRow className="bg-slate-50/50 hover:bg-slate-50/50">
@@ -691,6 +748,49 @@ const InvoicesPage = () => {
                                 </Table>
                             </div>
 
+                            {/* Mobile Invoices List */}
+                            <div className="md:hidden space-y-4 pt-4">
+                                {isLoading ? (
+                                    <div className="text-center py-10 text-slate-500">Loading invoices...</div>
+                                ) : invoices.length > 0 ? (
+                                    invoices.map((invoice) => (
+                                        <div 
+                                            key={invoice.id} 
+                                            className={`bg-white p-4 rounded-xl border border-slate-200 shadow-sm active:bg-slate-50 relative ${invoice.status === 'Cancelled' ? 'opacity-60' : ''}`}
+                                            onClick={() => setSelectedInvoice(invoice)}
+                                        >
+                                            <div className="flex justify-between items-start mb-2">
+                                                <div>
+                                                    <span className="text-xs font-mono text-slate-500">{invoice.invoiceNumber || invoice.id.slice(-6).toUpperCase()}</span>
+                                                    <h3 className="font-bold text-slate-900">{invoice.customerName}</h3>
+                                                </div>
+                                                <Badge className={`px-2 py-0.5 rounded-full text-[10px] font-medium border ${getStatusStyle(invoice.status)}`}>
+                                                    {invoice.status}
+                                                </Badge>
+                                            </div>
+                                            <div className="flex justify-between items-end">
+                                                <div className="text-xs text-slate-500">
+                                                    <Calendar className="inline h-3 w-3 mr-1" />
+                                                    {new Date(invoice.date).toLocaleDateString()}
+                                                </div>
+                                                <div className="text-right">
+                                                    <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Total</p>
+                                                    <p className="font-bold text-slate-900">₹{(invoice.total || 0).toFixed(2)}</p>
+                                                </div>
+                                            </div>
+                                            {invoice.balance > 0 && (
+                                                <div className="mt-2 pt-2 border-t border-slate-50 flex justify-between items-center">
+                                                    <span className="text-[10px] text-rose-500 font-bold uppercase">Balance Due</span>
+                                                    <span className="text-sm font-bold text-rose-600">₹{invoice.balance.toFixed(2)}</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    ))
+                                ) : (
+                                    <div className="text-center py-10 text-slate-500">No invoices found.</div>
+                                )}
+                            </div>
+
                             {/* Pagination */}
                             {pagination.pages > 1 && (
                                 <div className="flex items-center justify-between px-2 py-4">
@@ -722,18 +822,24 @@ const InvoicesPage = () => {
                 </div>
             </div>
 
-            {/* Side Panel (Enhanced) */}
+            {/* Side Panel (Enhanced Drawer) */}
             {selectedInvoice && (
-                <div className="w-full md:w-1/3 bg-white border-l border-slate-200 h-full overflow-y-auto fixed right-0 top-0 z-50 shadow-2xl p-6 transition-transform transform translate-x-0 pt-20">
-                    <div className="flex justify-between items-start mb-6">
-                        <div>
-                            <h2 className="text-xl font-bold text-slate-900">
+                <>
+                    {/* Backdrop for mobile */}
+                    <div 
+                        className="fixed inset-0 bg-black/40 backdrop-blur-sm md:hidden z-[55] animate-in fade-in" 
+                        onClick={() => setSelectedInvoice(null)}
+                    />
+                    <div className="w-full md:w-[400px] xl:w-[450px] bg-white h-full overflow-y-auto fixed right-0 top-0 z-[60] shadow-2xl transition-all animate-in slide-in-from-right duration-300">
+                        <div className="sticky top-0 bg-white/80 backdrop-blur-md z-10 p-4 border-b border-slate-100 flex justify-between items-center">
+                        <div className="flex-1">
+                            <h2 className="text-lg font-bold text-slate-900 leading-tight">
                                 Invoice #{selectedInvoice.invoiceNumber || selectedInvoice.id.slice(-6).toUpperCase()}
                             </h2>
-                            <p className="text-sm text-slate-500">{new Date(selectedInvoice.date).toLocaleString()}</p>
+                            <p className="text-xs text-slate-500 font-medium mt-0.5">{new Date(selectedInvoice.date).toLocaleString()}</p>
                         </div>
-                        <Button variant="ghost" size="sm" onClick={() => setSelectedInvoice(null)}>
-                            <XCircle className="h-6 w-6 text-slate-400 hover:text-slate-600" />
+                        <Button variant="ghost" size="icon" className="shrink-0 rounded-full hover:bg-slate-100" onClick={() => setSelectedInvoice(null)}>
+                            <X className="h-5 w-5 text-slate-400" />
                         </Button>
                     </div>
 
@@ -815,6 +921,7 @@ const InvoicesPage = () => {
 
                     </div>
                 </div>
+                </>
             )}
 
             <InvoiceDetailsModal

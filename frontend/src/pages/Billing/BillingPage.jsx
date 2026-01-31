@@ -706,7 +706,7 @@ const BillingPage = () => {
 
     // --- Render ---
     return (
-        <div className="flex h-[calc(100vh-theme(spacing.16))] flex-col bg-slate-50" style={{ zoom: '90%' }}>
+        <div className="flex h-[calc(100vh-theme(spacing.16))] flex-col bg-slate-50">
             {/* Top Bar - Tabs & Tools */}
             <div className="flex justify-between items-center px-1 bg-white border-b shadow-sm h-8">
                 <div className="flex gap-2 items-end h-full overflow-x-auto overflow-y-hidden no-scrollbar">

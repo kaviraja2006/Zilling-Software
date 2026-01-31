@@ -310,12 +310,12 @@ const ProductsPage = () => {
 
                     {/* Header & Stats */}
                     <div className="space-y-6">
-                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
                             <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Products & Inventory</h1>
 
-                            <div className="flex items-center gap-3">
+                            <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto">
                                 {/* Import Button */}
-                                <div className="relative">
+                                <div className="relative flex-1 sm:flex-none">
                                     <input
                                         type="file"
                                         accept=".xlsx, .xls"
@@ -323,19 +323,19 @@ const ProductsPage = () => {
                                         className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                                         title="Import Products from Excel"
                                     />
-                                    <Button variant="outline" className="bg-white hover:bg-slate-50 border-slate-200 text-slate-600 shadow-sm">
-                                        <Upload className="mr-2 h-4 w-4" /> Import
+                                    <Button variant="outline" className="w-full bg-white hover:bg-slate-50 border-slate-200 text-slate-600 shadow-sm text-xs sm:text-sm">
+                                        <Upload className="mr-2 h-3 w-3 sm:h-4 sm:w-4" /> Import
                                     </Button>
                                 </div>
 
                                 {/* Template Button */}
                                 <Button
                                     variant="outline"
-                                    className="bg-white hover:bg-slate-50 border-slate-200 text-slate-600 shadow-sm"
+                                    className="flex-1 sm:flex-none bg-white hover:bg-slate-50 border-slate-200 text-slate-600 shadow-sm text-xs sm:text-sm"
                                     onClick={() => setShowTemplateWizard(true)}
                                     title="Show Excel Template for Product Import"
                                 >
-                                    <Download className="mr-2 h-4 w-4" /> Template
+                                    <Download className="mr-2 h-3 w-3 sm:h-4 sm:w-4" /> Template
                                 </Button>
                                 {/* Product Import Template Wizard Popup */}
                                 <ProductTemplateWizard open={showTemplateWizard} onClose={() => setShowTemplateWizard(false)} />
@@ -350,28 +350,28 @@ const ProductsPage = () => {
                                             handleToggleSelectionMode(); // Toggle mode otherwise
                                         }
                                     }}
-                                    className={`shadow-sm transition-all ${isSelectionMode ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-white border-slate-200 text-slate-600'}`}
+                                    className={`flex-1 sm:flex-none shadow-sm transition-all text-xs sm:text-sm ${isSelectionMode ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-white border-slate-200 text-slate-600'}`}
                                 >
-                                    {isSelectionMode ? (selectedRows.size > 0 ? <Download className="mr-2 h-4 w-4" /> : <ListChecks className="mr-2 h-4 w-4" />) : <ListChecks className="mr-2 h-4 w-4" />}
-                                    {isSelectionMode ? (selectedRows.size > 0 ? `Export (${selectedRows.size})` : 'Done Selecting') : 'Select / Export'}
+                                    {isSelectionMode ? (selectedRows.size > 0 ? <Download className="mr-2 h-3 w-3 sm:h-4 sm:w-4" /> : <ListChecks className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />) : <ListChecks className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />}
+                                    {isSelectionMode ? (selectedRows.size > 0 ? `Export (${selectedRows.size})` : 'Done') : 'Select'}
                                 </Button>
 
                                 {selectedRows.size > 0 && (
                                     <Button
                                         variant="outline"
                                         onClick={handleBulkDelete}
-                                        className="text-rose-600 border-rose-200 hover:bg-rose-50 shadow-sm"
+                                        className="flex-1 sm:flex-none text-rose-600 border-rose-200 hover:bg-rose-50 shadow-sm text-xs sm:text-sm"
                                     >
-                                        <Trash className="mr-2 h-4 w-4" /> Delete ({selectedRows.size})
+                                        <Trash className="mr-2 h-3 w-3 sm:h-4 sm:w-4" /> Delete ({selectedRows.size})
                                     </Button>
                                 )}
 
                                 {/* Professional Add Product Button */}
                                 <Button
                                     onClick={handleAddNew}
-                                    className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-md hover:shadow-lg transition-all transform hover:-translate-y-0.5"
+                                    className="w-full sm:w-auto bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-md hover:shadow-lg transition-all transform hover:-translate-y-0.5 text-xs sm:text-sm font-bold"
                                 >
-                                    <Plus className="mr-2 h-4 w-4" /> Add Product
+                                    <Plus className="mr-2 h-3 w-3 sm:h-4 sm:w-4" /> Add Product
                                 </Button>
                             </div>
                         </div>
@@ -397,8 +397,8 @@ const ProductsPage = () => {
                         onViewModeChange={setViewMode}
                     />
 
-                    {/* Table Area */}
-                    <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+                    {/* Table Area (Desktop) */}
+                    <div className="hidden md:block bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden flex flex-col">
                         <div className="overflow-x-auto">
                             <Table>
                                 <TableHeader>
@@ -427,13 +427,13 @@ const ProductsPage = () => {
                                 <TableBody>
                                     {loading ? (
                                         <TableRow>
-                                            <TableCell colSpan={isSelectionMode ? 9 : 8} className="h-32 text-center text-slate-500">
+                                            <TableCell colSpan={isSelectionMode ? 10 : 9} className="h-32 text-center text-slate-500">
                                                 Loading inventory...
                                             </TableCell>
                                         </TableRow>
                                     ) : filteredProducts.length === 0 ? (
                                         <TableRow>
-                                            <TableCell colSpan={isSelectionMode ? 9 : 8} className="h-32 text-center text-slate-500">
+                                            <TableCell colSpan={isSelectionMode ? 10 : 9} className="h-32 text-center text-slate-500">
                                                 No products found matching your filters.
                                             </TableCell>
                                         </TableRow>
@@ -540,6 +540,82 @@ const ProductsPage = () => {
                             </Table>
                         </div>
                     </div>
+
+                    {/* Mobile View (Cards) */}
+                    <div className="md:hidden space-y-4">
+                        {loading ? (
+                            <div className="text-center py-10 text-slate-500">Loading inventory...</div>
+                        ) : filteredProducts.length === 0 ? (
+                            <div className="text-center py-10 text-slate-500">No products found.</div>
+                        ) : (
+                            filteredProducts.map((product) => {
+                                const stockStatus = product.stock === 0 ? 'Out of Stock' : product.stock <= (product.minStock ?? 10) ? 'Low Stock' : 'In Stock';
+                                const isSelected = selectedRows.has(product.id);
+                                return (
+                                    <div
+                                        key={product.id}
+                                        className={`bg-white p-4 rounded-xl border transition-all ${isSelected ? 'border-blue-500 bg-blue-50/30' : 'border-slate-200 shadow-sm'} active:bg-slate-50`}
+                                        onClick={() => isSelectionMode ? handleSelectionChange(product.id) : handleRowClick(product)}
+                                    >
+                                        <div className="flex justify-between items-start mb-3">
+                                            <div className="flex items-center gap-3">
+                                                {isSelectionMode && (
+                                                    <input
+                                                        type="checkbox"
+                                                        className="h-5 w-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                                                        checked={isSelected}
+                                                        onChange={() => handleSelectionChange(product.id)}
+                                                        onClick={(e) => e.stopPropagation()}
+                                                    />
+                                                )}
+                                                <div>
+                                                    <h3 className="font-bold text-slate-900">{product.name}</h3>
+                                                    <p className="text-xs text-slate-500 font-mono mt-0.5">{product.sku || 'NO-SKU'}</p>
+                                                </div>
+                                            </div>
+                                            <Badge
+                                                variant="secondary"
+                                                className={`text-[10px] px-2 py-0.5 ${product.isActive === false ? 'bg-slate-100 text-slate-500' :
+                                                        stockStatus === 'Out of Stock' ? 'bg-rose-100 text-rose-700' :
+                                                            stockStatus === 'Low Stock' ? 'bg-amber-100 text-amber-700' :
+                                                                'bg-green-100 text-green-700'}`}
+                                            >
+                                                {product.isActive === false ? 'Inactive' : stockStatus}
+                                            </Badge>
+                                        </div>
+
+                                        <div className="grid grid-cols-2 gap-4 mb-4 ml-0">
+                                            <div className="space-y-0.5">
+                                                <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Price</p>
+                                                <p className="font-bold text-blue-600">₹{Number(product.price || 0).toFixed(2)}</p>
+                                            </div>
+                                            <div className="space-y-0.5">
+                                                <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Stock</p>
+                                                <p className={`font-bold ${product.stock === 0 ? 'text-rose-600' : 'text-slate-900'}`}>{product.stock} {product.unit}</p>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex items-center justify-between pt-3 border-t border-slate-50">
+                                            <div className="flex gap-2 text-xs text-slate-500">
+                                                <Badge variant="outline" className="font-normal text-[10px]">{product.category}</Badge>
+                                            </div>
+                                            {!isSelectionMode && (
+                                                <div className="flex gap-2">
+                                                    <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={(e) => { e.stopPropagation(); handleEdit(product); }}>
+                                                        <Edit size={14} />
+                                                    </Button>
+                                                    <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-rose-600" onClick={(e) => { e.stopPropagation(); handleDelete(product.id); }}>
+                                                        <Trash size={14} />
+                                                    </Button>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                );
+                            })
+                        )}
+                    </div>
+
                 </div>
 
             </div>

@@ -4,17 +4,17 @@ import { Package, CheckCircle, XCircle, AlertTriangle, AlertOctagon } from 'luci
 const StatCard = ({ label, count, icon: Icon, color, active, onClick }) => (
     <button
         onClick={onClick}
-        className={`flex items-center gap-3 px-4 py-3 rounded-lg border transition-all duration-200 ${active
+        className={`flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2 sm:py-3 rounded-lg border transition-all duration-200 ${active
             ? `bg-${color}-50 border-${color}-200 shadow-sm ring-1 ring-${color}-200`
             : 'bg-white border-slate-100 hover:border-slate-200 hover:bg-slate-50'
             }`}
     >
-        <div className={`p-2 rounded-full bg-${color}-100 text-${color}-600`}>
-            <Icon size={18} />
+        <div className={`p-1.5 sm:p-2 rounded-full bg-${color}-100 text-${color}-600 shrink-0`}>
+            <Icon size={16} className="sm:w-[18px] sm:h-[18px]" />
         </div>
-        <div className="text-left">
-            <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">{label}</p>
-            <p className="text-lg font-bold text-slate-900">{count}</p>
+        <div className="text-left min-w-0">
+            <p className="text-[10px] sm:text-xs font-medium text-slate-500 uppercase tracking-wide truncate">{label}</p>
+            <p className="text-base sm:text-lg font-bold text-slate-900">{count}</p>
         </div>
     </button>
 );
@@ -37,7 +37,7 @@ const ProductStats = ({ products, currentFilter, onFilterChange }) => {
     ];
 
     return (
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
             {filters.map(({ key, ...rest }) => (
                 <StatCard
                     key={key}

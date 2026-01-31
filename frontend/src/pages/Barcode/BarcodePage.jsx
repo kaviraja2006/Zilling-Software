@@ -14,6 +14,10 @@ const BarcodeGeneratorPage = () => {
     const [barcodeFormat, setBarcodeFormat] = useState('CODE128');
 
     const generateBarcode = () => {
+        if (barcodeFormat === 'EAN13' && !/^\d{12,13}$/.test(inputValue)) {
+            alert('EAN-13 requires exactly 12-13 digits. Switching to CODE-128 for this input.');
+            setBarcodeFormat('CODE128');
+        }
         setBarcodeValue(inputValue);
     };
 

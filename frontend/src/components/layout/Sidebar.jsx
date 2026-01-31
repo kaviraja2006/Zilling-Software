@@ -12,7 +12,9 @@ import {
     Wallet,
     Settings,
     ScanBarcode,
-    Menu
+    Menu,
+    LogOut,
+    X
 } from 'lucide-react';
 
 const Sidebar = ({ isOpen = true, toggleSidebar, isMobile, onCloseMobile }) => {
@@ -53,8 +55,9 @@ const Sidebar = ({ isOpen = true, toggleSidebar, isMobile, onCloseMobile }) => {
                         <button
                             onClick={onCloseMobile}
                             className="md:hidden p-1.5 rounded-md hover:bg-slate-100 text-slate-600 hover:text-body-primary transition-colors"
+                            aria-label="Close menu"
                         >
-                            <LogOut size={18} className="rotate-180" /> {/* temporary icon or X */}
+                            <X size={18} />
                         </button>
                     )}
                 </div>

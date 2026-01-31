@@ -37,13 +37,20 @@ const ProductInsights = ({ product, onClose }) => {
     const isProfitable = parseFloat(marginVal) > 20;
 
     return (
-        <div className="w-80 border-l border-slate-200 bg-white h-[calc(100vh-64px)] overflow-y-auto hidden xl:block sticky top-0 right-0">
-            <div className="p-4 border-b border-slate-100 flex justify-between items-center">
-                <h3 className="font-semibold text-slate-900">Product Insights</h3>
-                <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
-                    <X size={18} />
-                </button>
-            </div>
+        <div className="fixed inset-0 z-50 xl:relative xl:z-0 flex justify-end">
+            {/* Backdrop for mobile */}
+            <div 
+                className="fixed inset-0 bg-black/20 backdrop-blur-sm xl:hidden"
+                onClick={onClose}
+            />
+            
+            <div className="relative w-80 sm:w-96 xl:w-80 bg-white h-full xl:h-[calc(100vh-64px)] overflow-y-auto border-l border-slate-200 shadow-2xl xl:shadow-none animate-in slide-in-from-right duration-300">
+                <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-white sticky top-0 z-10">
+                    <h3 className="font-semibold text-slate-900">Product Insights</h3>
+                    <button onClick={onClose} className="p-2 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors">
+                        <X size={20} />
+                    </button>
+                </div>
 
             <div className="p-4 space-y-6">
                 {/* Product Header */}
@@ -107,6 +114,7 @@ const ProductInsights = ({ product, onClose }) => {
                         </div>
                     </div>
                 )}
+                </div>
             </div>
         </div>
     );

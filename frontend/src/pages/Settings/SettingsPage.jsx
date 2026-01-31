@@ -5,7 +5,7 @@ import { Card, CardContent } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
 import {
     Store, Receipt, Calculator, Printer, Globe, Layout,
-    Save, RotateCcw, Plus, Trash2, Eye, CheckCircle, FileText, User, LogOut
+    Save, RotateCcw, Eye, CheckCircle, FileText, User, LogOut
 } from 'lucide-react';
 import { useSettings } from '../../context/SettingsContext';
 import { useAuth } from '../../context/AuthContext';
@@ -19,24 +19,12 @@ const SettingsPage = () => {
     const [unsavedChanges, setUnsavedChanges] = useState(false);
     const [showSuccess, setShowSuccess] = useState(false);
 
-    // Local state for complex forms (Tax Matrix)
-    const [taxGroups, setTaxGroups] = useState([]);
 
-    // Sync local state when settings load
-    useEffect(() => {
-        if (settings?.tax?.taxGroups) {
-            setTaxGroups(settings.tax.taxGroups);
-        }
-    }, [settings]);
 
     const handleSave = async () => {
-        // Prepare payload (merge local states like taxGroups back into settings update)
+        // Prepare payload
         const payload = {
             ...settings,
-            tax: {
-                ...settings.tax,
-                taxGroups: taxGroups
-            },
             lastUpdatedAt: new Date()
         };
         // Call API manually or via Context if context supports full update
@@ -70,44 +58,7 @@ const SettingsPage = () => {
         }
     };
 
-    // Tax Matrix Helpers
-    const addTaxGroup = () => {
-        const newGroup = {
-            id: Date.now().toString(),
-            name: 'New Tax Group',
-            rate: 0,
-            cgst: 0,
-            sgst: 0,
-            igst: 0,
-            active: true
-        };
-        setTaxGroups([...taxGroups, newGroup]);
-        setUnsavedChanges(true);
-    };
 
-    const updateTaxGroup = (id, field, value) => {
-        const updated = taxGroups.map(g => {
-            if (g.id === id) {
-                const updatedGroup = { ...g, [field]: value };
-                // Auto-calc breakdown if rate changes
-                if (field === 'rate') {
-                    const rate = parseFloat(value) || 0;
-                    updatedGroup.igst = rate;
-                    updatedGroup.cgst = rate / 2;
-                    updatedGroup.sgst = rate / 2;
-                }
-                return updatedGroup;
-            }
-            return g;
-        });
-        setTaxGroups(updated);
-        setUnsavedChanges(true);
-    };
-
-    const removeTaxGroup = (id) => {
-        setTaxGroups(taxGroups.filter(g => g.id !== id));
-        setUnsavedChanges(true);
-    };
 
     const tabs = [
         { id: 'store', label: 'Store Profile', icon: Store },
@@ -256,56 +207,7 @@ const SettingsPage = () => {
                             </CardContent>
                         </Card>
 
-                        {/* Tax Matrix Editor */}
-                        <Card>
-                            <CardContent className="p-6">
-                                <div className="flex justify-between items-center mb-4">
-                                    <div>
-                                        <h3 className="text-lg font-semibold text-slate-800">Tax Matrix</h3>
-                                        <p className="text-sm text-slate-500">Define tax slabs used in products</p>
-                                    </div>
-                                    <Button size="sm" onClick={addTaxGroup} variant="outline"><Plus className="h-4 w-4 mr-2" /> Add Group</Button>
-                                </div>
 
-                                <div className="overflow-x-auto border rounded-xl">
-                                    <table className="w-full text-sm text-left">
-                                        <thead className="bg-slate-50 text-slate-600 font-medium">
-                                            <tr>
-                                                <th className="px-4 py-3">Group Name</th>
-                                                <th className="px-4 py-3 w-24">Rate (%)</th>
-                                                <th className="px-4 py-3 w-24">CGST</th>
-                                                <th className="px-4 py-3 w-24">SGST</th>
-                                                <th className="px-4 py-3 w-24">IGST</th>
-                                                <th className="px-4 py-3 w-16">Action</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-slate-100">
-                                            {taxGroups.map((group) => (
-                                                <tr key={group.id} className="group hover:bg-slate-50/50">
-                                                    <td className="px-4 py-2">
-                                                        <Input className="h-8" value={group.name} onChange={(e) => updateTaxGroup(group.id, 'name', e.target.value)} />
-                                                    </td>
-                                                    <td className="px-4 py-2">
-                                                        <Input className="h-8" type="number" value={group.rate} onChange={(e) => updateTaxGroup(group.id, 'rate', e.target.value)} />
-                                                    </td>
-                                                    <td className="px-4 py-2 text-slate-500">{group.cgst}%</td>
-                                                    <td className="px-4 py-2 text-slate-500">{group.sgst}%</td>
-                                                    <td className="px-4 py-2 text-slate-500">{group.igst}%</td>
-                                                    <td className="px-4 py-2">
-                                                        <button onClick={() => removeTaxGroup(group.id)} className="text-rose-400 hover:text-rose-600 transition-colors p-1">
-                                                            <Trash2 size={16} />
-                                                        </button>
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                            {taxGroups.length === 0 && (
-                                                <tr><td colSpan="6" className="text-center py-6 text-slate-400">No tax groups defined. Add one to get started.</td></tr>
-                                            )}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </CardContent>
-                        </Card>
                     </div>
                 );
 
@@ -464,53 +366,58 @@ const SettingsPage = () => {
     return (
         <div className="min-h-screen bg-slate-50/50 pb-20">
             {/* Header */}
-            <div className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-slate-200 px-6 py-4 flex justify-between items-center">
+            <div className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-slate-200 px-4 sm:px-6 py-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div className="flex items-center gap-3">
-                    <h1 className="text-2xl font-bold text-slate-900">Settings</h1>
+                    <h1 className="text-xl sm:text-2xl font-bold text-slate-900">Settings</h1>
                     {unsavedChanges && (
-                        <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 animate-pulse">
+                        <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 animate-pulse text-[10px] sm:text-xs">
                             Unsaved Changes
                         </Badge>
                     )}
                 </div>
-                <div className="flex gap-2">
-                    <Button variant="ghost" onClick={() => window.location.reload()}><RotateCcw className="h-4 w-4 mr-2" /> Reset</Button>
+                <div className="flex gap-2 w-full sm:w-auto">
+                    <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="flex-1 sm:flex-none text-xs sm:text-sm"
+                        onClick={() => window.location.reload()}
+                    >
+                        <RotateCcw className="h-3 w-3 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" /> Reset
+                    </Button>
                     {unsavedChanges && (
-                        <Button onClick={handleSave} className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-200">
-                            <Save className="h-4 w-4 mr-2" /> Save Changes
+                        <Button 
+                            size="sm"
+                            className="flex-1 sm:flex-none bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-200 text-xs sm:text-sm font-bold"
+                            onClick={handleSave}
+                        >
+                            <Save className="h-3 w-3 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" /> Save Changes
                         </Button>
                     )}
                 </div>
             </div>
 
-            <div className="flex max-w-7xl mx-auto pt-8 px-6 gap-8">
+            <div className="flex flex-col lg:flex-row max-w-7xl mx-auto pt-6 px-4 sm:px-6 gap-6 lg:gap-8">
                 {/* Sidebar Navigation */}
-                <div className="w-64 flex-shrink-0 space-y-2">
+                <div className="flex lg:flex-col lg:w-64 flex-shrink-0 gap-1 overflow-x-auto pb-2 lg:pb-0 no-scrollbar">
                     {tabs.map(tab => (
                         <button
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id)}
                             className={`
-                                w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all
+                                flex-shrink-0 flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2 sm:py-3 rounded-xl text-xs sm:text-sm font-medium transition-all
                                 ${activeTab === tab.id
                                     ? 'bg-white text-indigo-600 shadow-sm ring-1 ring-slate-200'
                                     : 'text-slate-500 hover:bg-slate-100/80 hover:text-slate-900'}
                             `}
                         >
-                            <tab.icon size={18} />
-                            {tab.label}
+                            <tab.icon size={16} className="sm:w-[18px] sm:h-[18px]" />
+                            <span className="whitespace-nowrap">{tab.label}</span>
                         </button>
                     ))}
-
-                    <div className="pt-8 px-4">
-                        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">System</p>
-                        <p className="text-xs text-slate-400">Version 2.4.0 (Build 2024.1)</p>
-                        <p className="text-xs text-slate-400 mt-1">Last Updated: {settings.lastUpdatedAt ? new Date(settings.lastUpdatedAt).toLocaleDateString() : 'Never'}</p>
-                    </div>
                 </div>
 
                 {/* Main Content Area */}
-                <div className="flex-1">
+                <div className="flex-1 min-w-0">
                     {renderTabContent()}
                 </div>
             </div>
