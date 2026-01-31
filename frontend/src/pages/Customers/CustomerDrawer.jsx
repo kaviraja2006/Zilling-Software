@@ -21,6 +21,28 @@ const INDIAN_STATES = [
 const SOURCE_OPTIONS = ['Walk-in', 'WhatsApp', 'Instagram', 'Referral', 'Other'];
 const TAG_OPTIONS = ['VIP', 'Wholesale', 'Credit'];
 
+// Comprehensive Country Codes
+const COUNTRY_CODES = [
+    { code: '+91', country: 'India', flag: '🇮🇳' },
+    { code: '+1', country: 'USA/Canada', flag: '🇺🇸' },
+    { code: '+44', country: 'UK', flag: '🇬🇧' },
+    { code: '+971', country: 'UAE', flag: '🇦🇪' },
+    { code: '+61', country: 'Australia', flag: '🇦🇺' },
+    { code: '+65', country: 'Singapore', flag: '🇸🇬' },
+    { code: '+60', country: 'Malaysia', flag: '🇲🇾' },
+    { code: '+966', country: 'Saudi Arabia', flag: '🇸🇦' },
+    { code: '+974', country: 'Qatar', flag: '🇶🇦' },
+    { code: '+33', country: 'France', flag: '🇫🇷' },
+    { code: '+49', country: 'Germany', flag: '🇩🇪' },
+    { code: '+81', country: 'Japan', flag: '🇯🇵' },
+    { code: '+86', country: 'China', flag: '🇨🇳' },
+    { code: '+94', country: 'Sri Lanka', flag: '🇱🇰' },
+    { code: '+880', country: 'Bangladesh', flag: '🇧🇩' },
+    { code: '+977', country: 'Nepal', flag: '🇳🇵' },
+];
+
+const CUSTOMER_TYPE_OPTIONS = ['Individual', 'Business'];
+
 // Debounce hook
 const useDebounce = (value, delay) => {
     const [debouncedValue, setDebouncedValue] = useState(value);
@@ -45,7 +67,8 @@ const CustomerDrawer = ({ isOpen, onClose, customer, onSave, initialTab = 'detai
     const [expandedOrder, setExpandedOrder] = useState(null);
     const [formData, setFormData] = useState({
         fullName: '',
-        phone: '',
+        countryCode: '+91', // Default
+        phone: '', // strict 10 digits
         email: '',
         customerType: 'Individual',
         gstin: '',
@@ -71,11 +94,38 @@ const CustomerDrawer = ({ isOpen, onClose, customer, onSave, initialTab = 'detai
     const debouncedPhone = useDebounce(formData.phone, 300);
     const debouncedEmail = useDebounce(formData.email, 300);
 
+    // Parse existing phone number into Code + Number
+    const parsePhone = (fullPhone) => {
+        if (!fullPhone) return { code: '+91', number: '' };
+
+        // Try to match known codes
+        // Sort codes by length desc to match +971 before +91 if ambiguous? 
+        // Actually +91 is 3 chars, +971 is 4.
+        const sortedCodes = [...COUNTRY_CODES].sort((a, b) => b.code.length - a.code.length);
+
+        for (const c of sortedCodes) {
+            if (fullPhone.startsWith(c.code)) {
+                return {
+                    code: c.code,
+                    number: fullPhone.slice(c.code.length).trim()
+                };
+            }
+        }
+
+        // Fallback or if no code found (assume raw number is just number, default +91)
+        return { code: '+91', number: fullPhone };
+    };
+
+    const [isEditing, setIsEditing] = useState(false);
+
     useEffect(() => {
         if (customer) {
+            setIsEditing(false); // Valid customer = View Mode
+            const { code, number } = parsePhone(customer.phone);
             setFormData({
                 fullName: customer.fullName || `${customer.firstName || ''} ${customer.lastName || ''}`.trim(),
-                phone: customer.phone || '',
+                countryCode: code,
+                phone: number,
                 email: customer.email || '',
                 customerType: customer.customerType || 'Individual',
                 gstin: customer.gstin || '',
@@ -92,8 +142,10 @@ const CustomerDrawer = ({ isOpen, onClose, customer, onSave, initialTab = 'detai
                 notes: customer.notes || ''
             });
         } else {
+            setIsEditing(true); // New customer = Edit Mode
             setFormData({
                 fullName: '',
+                countryCode: '+91',
                 phone: '',
                 email: '',
                 customerType: 'Individual',
@@ -111,6 +163,7 @@ const CustomerDrawer = ({ isOpen, onClose, customer, onSave, initialTab = 'detai
                 notes: ''
             });
         }
+
         setActiveTab(initialTab || 'details');
         setValidation({});
         setTouched({});
@@ -157,6 +210,19 @@ const CustomerDrawer = ({ isOpen, onClose, customer, onSave, initialTab = 'detai
 
     const handleChange = (e) => {
         const { name, value } = e.target;
+
+        if (name === 'phone') {
+            // Strict number only
+            const numericValue = value.replace(/[^0-9]/g, '');
+            // Limit to 10
+            if (numericValue.length > 10) return;
+
+            setFormData(prev => ({ ...prev, phone: numericValue }));
+            setTouched(prev => ({ ...prev, phone: true }));
+            validateField('phone', numericValue);
+            return;
+        }
+
         if (name.startsWith('address.')) {
             const addressField = name.split('.')[1];
             setFormData(prev => ({
@@ -184,8 +250,8 @@ const CustomerDrawer = ({ isOpen, onClose, customer, onSave, initialTab = 'detai
             case 'phone':
                 if (!value.trim()) {
                     newValidation.phone = { valid: false, message: 'Phone is required' };
-                } else if (!/^\+?[\d\s-]{10,}$/.test(value)) {
-                    newValidation.phone = { valid: false, message: 'Invalid phone format' };
+                } else if (value.length !== 10) {
+                    newValidation.phone = { valid: false, message: 'Phone must be exactly 10 digits' };
                 } else {
                     newValidation.phone = { valid: true };
                 }
@@ -229,17 +295,29 @@ const CustomerDrawer = ({ isOpen, onClose, customer, onSave, initialTab = 'detai
             return;
         }
 
+        if (formData.phone.length !== 10) {
+            alert("Phone number must be exactly 10 digits");
+            return;
+        }
+
         if (formData.customerType === 'Business' && !formData.gstin) {
             alert("GSTIN is required for business customers");
             return;
         }
 
-        onSave(formData, addAnother);
+        // Combine code + phone
+        const finalData = {
+            ...formData,
+            phone: `${formData.countryCode}${formData.phone}`
+        };
+
+        onSave(finalData, addAnother);
 
         if (addAnother) {
             // Reset form for next entry
             setFormData({
                 fullName: '',
+                countryCode: '+91',
                 phone: '',
                 email: '',
                 customerType: 'Individual',
@@ -284,21 +362,33 @@ const CustomerDrawer = ({ isOpen, onClose, customer, onSave, initialTab = 'detai
     return (
         <Drawer isOpen={isOpen} onClose={onClose} title={title} width="max-w-3xl">
             <div className="h-full flex flex-col">
-                {/* Tabs */}
+                {/* Tabs & Edit Button */}
                 {customer && (
-                    <div className="flex border-b border-slate-200 mb-6">
-                        <button
-                            className={`px-4 py-2 text-sm font-medium ${activeTab === 'details' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-slate-600 hover:text-slate-900'}`}
-                            onClick={() => setActiveTab('details')}
-                        >
-                            Profile
-                        </button>
-                        <button
-                            className={`px-4 py-2 text-sm font-medium ${activeTab === 'history' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-slate-600 hover:text-slate-900'}`}
-                            onClick={() => setActiveTab('history')}
-                        >
-                            Purchase History
-                        </button>
+                    <div className="flex border-b border-slate-200 mb-6 justify-between items-center">
+                        <div className="flex">
+                            <button
+                                className={`px-4 py-2 text-sm font-medium ${activeTab === 'details' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-slate-600 hover:text-slate-900'}`}
+                                onClick={() => setActiveTab('details')}
+                            >
+                                Profile
+                            </button>
+                            <button
+                                className={`px-4 py-2 text-sm font-medium ${activeTab === 'history' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-slate-600 hover:text-slate-900'}`}
+                                onClick={() => setActiveTab('history')}
+                            >
+                                Purchase History
+                            </button>
+                        </div>
+                        {activeTab === 'details' && !isEditing && (
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-blue-600 hover:bg-blue-50 mr-2"
+                                onClick={() => setIsEditing(true)}
+                            >
+                                ✏️ Edit
+                            </Button>
+                        )}
                     </div>
                 )}
 
@@ -307,9 +397,12 @@ const CustomerDrawer = ({ isOpen, onClose, customer, onSave, initialTab = 'detai
                         <div className="space-y-6">
                             {/* Customer ID (read-only for existing customers) */}
                             {customer && customer.customerId && (
-                                <div className="bg-blue-50 p-3 rounded-lg">
-                                    <p className="text-xs text-slate-600">Customer ID</p>
-                                    <p className="font-mono font-semibold text-blue-900">{customer.customerId}</p>
+                                <div className="bg-blue-50 p-3 rounded-lg flex justify-between items-center">
+                                    <div>
+                                        <p className="text-xs text-slate-600">Customer ID</p>
+                                        <p className="font-mono font-semibold text-blue-900">{customer.customerId}</p>
+                                    </div>
+                                    {!isEditing && <span className="text-xs bg-slate-200 px-2 py-1 rounded text-slate-600 font-medium">Read Only</span>}
                                 </div>
                             )}
 
@@ -352,28 +445,20 @@ const CustomerDrawer = ({ isOpen, onClose, customer, onSave, initialTab = 'detai
                                         Type <span className="text-red-500">*</span>
                                     </label>
                                     <div className="flex gap-4">
-                                        <label className="flex items-center gap-2 cursor-pointer">
-                                            <input
-                                                type="radio"
-                                                name="customerType"
-                                                value="Individual"
-                                                checked={formData.customerType === 'Individual'}
-                                                onChange={handleChange}
-                                                className="w-4 h-4 text-blue-600"
-                                            />
-                                            <span className="text-sm text-slate-700">Individual</span>
-                                        </label>
-                                        <label className="flex items-center gap-2 cursor-pointer">
-                                            <input
-                                                type="radio"
-                                                name="customerType"
-                                                value="Business"
-                                                checked={formData.customerType === 'Business'}
-                                                onChange={handleChange}
-                                                className="w-4 h-4 text-blue-600"
-                                            />
-                                            <span className="text-sm text-slate-700">Business</span>
-                                        </label>
+                                        {CUSTOMER_TYPE_OPTIONS.map(type => (
+                                            <label key={type} className={`flex items-center gap-2 ${!isEditing ? 'cursor-default opacity-70' : 'cursor-pointer'}`}>
+                                                <input
+                                                    type="radio"
+                                                    name="customerType"
+                                                    value={type}
+                                                    checked={formData.customerType === type}
+                                                    onChange={handleChange}
+                                                    disabled={!isEditing}
+                                                    className="w-4 h-4 text-blue-600"
+                                                />
+                                                <span className="text-sm text-slate-700">{type}</span>
+                                            </label>
+                                        ))}
                                     </div>
                                     <p className="text-xs text-slate-500">Select customer type for tax purposes</p>
                                 </div>
@@ -389,6 +474,7 @@ const CustomerDrawer = ({ isOpen, onClose, customer, onSave, initialTab = 'detai
                                             value={formData.fullName}
                                             onChange={handleChange}
                                             placeholder="e.g. John Doe"
+                                            disabled={!isEditing}
                                             className={touched.fullName && validation.fullName && !validation.fullName.valid ? 'border-red-300' : ''}
                                         />
                                         <div className="absolute right-3 top-3">
@@ -407,26 +493,42 @@ const CustomerDrawer = ({ isOpen, onClose, customer, onSave, initialTab = 'detai
                                         <label className="text-sm font-medium text-slate-700">
                                             Phone <span className="text-red-500">*</span>
                                         </label>
-                                        <div className="relative">
-                                            <Input
-                                                name="phone"
-                                                value={formData.phone}
+                                        <div className="flex rounded-lg shadow-sm">
+                                            <select
+                                                name="countryCode"
+                                                value={formData.countryCode}
                                                 onChange={handleChange}
-                                                placeholder="+91 98765 43210"
-                                                className={touched.phone && validation.phone && !validation.phone.valid ? 'border-red-300' : ''}
-                                            />
-                                            <div className="absolute right-3 top-3">
-                                                {searchingDuplicates && formData.phone ? (
-                                                    <div className="animate-spin h-4 w-4 border-2 border-blue-600 border-t-transparent rounded-full"></div>
-                                                ) : (
-                                                    getValidationIcon('phone')
-                                                )}
+                                                disabled={!isEditing}
+                                                className={`h-10 px-2 rounded-l-lg border border-r-0 border-slate-200 bg-slate-50 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent min-w-[80px] ${!isEditing ? 'opacity-70' : ''}`}
+                                            >
+                                                {COUNTRY_CODES.map(c => (
+                                                    <option key={c.code} value={c.code}>
+                                                        {c.flag} {c.code}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            <div className="relative flex-1">
+                                                <Input
+                                                    name="phone"
+                                                    value={formData.phone}
+                                                    onChange={handleChange}
+                                                    placeholder="9876543210"
+                                                    disabled={!isEditing}
+                                                    className={`rounded-l-none ${touched.phone && validation.phone && !validation.phone.valid ? 'border-red-300' : ''}`}
+                                                />
+                                                <div className="absolute right-3 top-3">
+                                                    {searchingDuplicates && formData.phone ? (
+                                                        <div className="animate-spin h-4 w-4 border-2 border-blue-600 border-t-transparent rounded-full"></div>
+                                                    ) : (
+                                                        getValidationIcon('phone')
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
                                         {touched.phone && validation.phone && !validation.phone.valid && (
                                             <p className="text-xs text-red-600">{validation.phone.message}</p>
                                         )}
-                                        <p className="text-xs text-slate-500">Primary contact number</p>
+                                        <p className="text-xs text-slate-500">10-digit number without spaces</p>
                                     </div>
                                     <div className="space-y-2">
                                         <label className="text-sm font-medium text-slate-700">Email</label>
@@ -437,6 +539,7 @@ const CustomerDrawer = ({ isOpen, onClose, customer, onSave, initialTab = 'detai
                                                 value={formData.email}
                                                 onChange={handleChange}
                                                 placeholder="john@example.com"
+                                                disabled={!isEditing}
                                                 className={touched.email && validation.email && !validation.email.valid ? 'border-red-300' : ''}
                                             />
                                             <div className="absolute right-3 top-3">
@@ -466,6 +569,7 @@ const CustomerDrawer = ({ isOpen, onClose, customer, onSave, initialTab = 'detai
                                                 value={formData.gstin}
                                                 onChange={handleChange}
                                                 placeholder="22AAAAA0000A1Z5"
+                                                disabled={!isEditing}
                                                 className={`uppercase ${touched.gstin && validation.gstin && !validation.gstin.valid ? 'border-red-300' : ''}`}
                                                 maxLength={15}
                                             />
@@ -491,6 +595,7 @@ const CustomerDrawer = ({ isOpen, onClose, customer, onSave, initialTab = 'detai
                                         value={formData.address.street}
                                         onChange={handleChange}
                                         placeholder="House/Flat No., Building Name"
+                                        disabled={!isEditing}
                                     />
                                     <p className="text-xs text-slate-500">Building number and street name</p>
                                 </div>
@@ -502,6 +607,7 @@ const CustomerDrawer = ({ isOpen, onClose, customer, onSave, initialTab = 'detai
                                             value={formData.address.area}
                                             onChange={handleChange}
                                             placeholder="Locality/Area"
+                                            disabled={!isEditing}
                                         />
                                         <p className="text-xs text-slate-500">Neighborhood or locality</p>
                                     </div>
@@ -512,6 +618,7 @@ const CustomerDrawer = ({ isOpen, onClose, customer, onSave, initialTab = 'detai
                                             value={formData.address.city}
                                             onChange={handleChange}
                                             placeholder="City"
+                                            disabled={!isEditing}
                                         />
                                         <p className="text-xs text-slate-500">City or town name</p>
                                     </div>
@@ -525,6 +632,7 @@ const CustomerDrawer = ({ isOpen, onClose, customer, onSave, initialTab = 'detai
                                             onChange={handleChange}
                                             placeholder="400001"
                                             maxLength={6}
+                                            disabled={!isEditing}
                                         />
                                         <p className="text-xs text-slate-500">6-digit postal code</p>
                                     </div>
@@ -534,6 +642,7 @@ const CustomerDrawer = ({ isOpen, onClose, customer, onSave, initialTab = 'detai
                                             name="address.state"
                                             value={formData.address.state}
                                             onChange={handleChange}
+                                            disabled={!isEditing}
                                             className="flex h-10 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                                         >
                                             <option value="">Select State</option>
@@ -557,6 +666,7 @@ const CustomerDrawer = ({ isOpen, onClose, customer, onSave, initialTab = 'detai
                                             name="source"
                                             value={formData.source}
                                             onChange={handleChange}
+                                            disabled={!isEditing}
                                             className="flex h-10 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                                         >
                                             {SOURCE_OPTIONS.map(source => (
@@ -574,6 +684,7 @@ const CustomerDrawer = ({ isOpen, onClose, customer, onSave, initialTab = 'detai
                                             onChange={handleChange}
                                             placeholder="0"
                                             min="0"
+                                            disabled={!isEditing}
                                         />
                                         <p className="text-xs text-slate-500">Reward points balance</p>
                                     </div>
@@ -587,7 +698,8 @@ const CustomerDrawer = ({ isOpen, onClose, customer, onSave, initialTab = 'detai
                                                 key={tag}
                                                 type="button"
                                                 onClick={() => handleTagToggle(tag)}
-                                                className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${formData.tags.includes(tag)
+                                                disabled={!isEditing}
+                                                className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${!isEditing ? 'opacity-70 cursor-default' : ''} ${formData.tags.includes(tag)
                                                     ? tag === 'VIP' ? 'bg-purple-600 text-white'
                                                         : tag === 'Wholesale' ? 'bg-blue-600 text-white'
                                                             : 'bg-orange-600 text-white'
@@ -610,6 +722,7 @@ const CustomerDrawer = ({ isOpen, onClose, customer, onSave, initialTab = 'detai
                                         onChange={handleChange}
                                         placeholder="Additional notes about this customer..."
                                         rows={3}
+                                        disabled={!isEditing}
                                         className="flex w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                                     />
                                     <p className="text-xs text-slate-500">Any special instructions or preferences</p>
@@ -765,19 +878,43 @@ const CustomerDrawer = ({ isOpen, onClose, customer, onSave, initialTab = 'detai
                 <div className="pt-4 flex gap-3 border-t border-slate-100 mt-4">
                     {activeTab === 'details' && (
                         <>
-                            <Button variant="outline" className="flex-1" onClick={onClose}>Cancel</Button>
-                            {!customer && (
-                                <Button
-                                    variant="outline"
-                                    className="flex-1 border-blue-600 text-blue-600 hover:bg-blue-50"
-                                    onClick={() => handleSave(true)}
-                                >
-                                    Save & Add Another
-                                </Button>
+                            {/* View Mode: Only Close */}
+                            {!isEditing && customer && (
+                                <Button variant="outline" className="w-full" onClick={onClose}>Close</Button>
                             )}
-                            <Button className="flex-1" variant="primary" onClick={() => handleSave(false)}>
-                                {customer ? 'Update Customer' : 'Save Customer'}
-                            </Button>
+
+                            {/* Edit Mode */}
+                            {isEditing && (
+                                <>
+                                    <Button
+                                        variant="outline"
+                                        className="flex-1"
+                                        onClick={() => {
+                                            if (customer) {
+                                                setIsEditing(false); // Cancel edit, go back to view
+                                            } else {
+                                                onClose(); // Cancel new creation
+                                            }
+                                        }}
+                                    >
+                                        Cancel
+                                    </Button>
+
+                                    {!customer && (
+                                        <Button
+                                            variant="outline"
+                                            className="flex-1 border-blue-600 text-blue-600 hover:bg-blue-50"
+                                            onClick={() => handleSave(true)}
+                                        >
+                                            Save & Add Another
+                                        </Button>
+                                    )}
+
+                                    <Button className="flex-1" variant="primary" onClick={() => handleSave(false)}>
+                                        {customer ? 'Update Customer' : 'Save Customer'}
+                                    </Button>
+                                </>
+                            )}
                         </>
                     )}
                     {activeTab === 'history' && (

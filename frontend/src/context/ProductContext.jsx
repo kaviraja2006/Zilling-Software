@@ -31,7 +31,6 @@ export const ProductProvider = ({ children }) => {
     };
 
     useEffect(() => {
-        // Only fetch if user is authenticated and auth is not loading
         if (authLoading || !user) {
             setLoading(false);
             if (!user) {
@@ -45,8 +44,6 @@ export const ProductProvider = ({ children }) => {
 
     const addProduct = async (productData) => {
         try {
-            // Ensure sku is present for backend compatibility (it requires unique sku)
-            // Strip UI-only fields like 'hasVariants'
             const { hasVariants, ...rest } = productData;
 
             const payload = {
@@ -71,29 +68,61 @@ export const ProductProvider = ({ children }) => {
         const addedProducts = [];
         // Sequential upload to API
         for (const rawP of productsArray) {
-            // Normalize keys: trim and lowercase
+            // Normalize keys: to lowercase and remove non-alphanumeric characters
             const p = {};
             Object.keys(rawP).forEach(key => {
-                p[key.trim().toLowerCase()] = rawP[key];
+                const cleanKey = key.toString().toLowerCase().replace(/[^a-z0-9]/g, '');
+                p[cleanKey] = rawP[key];
             });
 
             const getVal = (keys) => {
                 for (let k of keys) {
-                    if (p[k] !== undefined) return p[k];
+                    const cleanK = k.toString().toLowerCase().replace(/[^a-z0-9]/g, '');
+                    if (p[cleanK] !== undefined) return p[cleanK];
                 }
                 return undefined;
             };
 
-            const name = getVal(['name', 'product name', 'productname', 'item', 'item name', 'title']) || 'Imported Product';
-            const price = parseFloat(getVal(['price', 'mrp', 'rate', 'cost', 'amount', 'selling price', 'sp', 'unit price'])) || 0;
+            const parseNumber = (val) => {
+                if (typeof val === 'number') return val;
+                if (typeof val === 'string') {
+                    const cleaned = val.replace(/[^0-9.-]/g, '');
+                    return parseFloat(cleaned) || 0;
+                }
+                return 0;
+            };
 
-            const barcode = getVal(['barcode', 'code', 'upc', 'ean', 'sku']) || `GEN-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+
+
+            const name = getVal(['name', 'product name', 'productname', 'item', 'item name', 'title']);
+
+            // Skip empty rows (artifacts from excel)
+            if (!name) {
+                console.warn("Skipping empty row or row without name");
+                continue;
+            }
+
+            // Removed 'cost' from price mapping to avoid confusion with cost price
+            const price = parseNumber(getVal(['price', 'mrp', 'rate', 'amount', 'selling price', 'sp', 'unit price']));
+            const costPrice = parseNumber(getVal(['cost price', 'cp', 'buying price', 'purchase price', 'cost']));
+
+            let barcode = getVal(['barcode', 'code', 'upc', 'ean', 'sku']);
+
+            // Fix for Template Default SKU loop: If SKU is "SKU123", append timestamp to make it unique
+            if (barcode === 'SKU123') {
+                barcode = `SKU123-${Date.now()}`;
+            }
+            // If no barcode, generate one
+            if (!barcode) {
+                barcode = `GEN-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+            }
 
             const productData = {
                 name: name,
                 category: getVal(['category', 'group', 'type']) || 'Uncategorized',
                 brand: getVal(['brand', 'company', 'make']) || '',
                 price: price,
+                costPrice: costPrice,
                 stock: parseInt(getVal(['stock', 'qty', 'quantity', 'count', 'inventory', 'balance', 'units'])) || 0,
                 barcode: barcode,
                 sku: barcode,
@@ -101,14 +130,48 @@ export const ProductProvider = ({ children }) => {
                 description: getVal(['description', 'desc', 'details', 'specification']) || ''
             };
 
+            const createProductWithRetry = async (data, attempts = 1) => {
+                try {
+                    const response = await services.products.create(data);
+                    return response.data;
+                } catch (err) {
+                    // Check for duplicate error (status 400 or 500 with specific message)
+                    const isDuplicate = err.response?.status === 400 || err.response?.status === 500 ||
+                        (err.response?.data?.message && (
+                            err.response.data.message.includes('duplicate') ||
+                            err.response.data.message.includes('exists')
+                        ));
+
+                    if (isDuplicate && attempts > 0) {
+                        console.warn(`Duplicate found for ${data.name}. Retrying with new SKU/Barcode...`);
+
+                        // Regenerate SKU/Barcode to be unique
+                        const suffix = `-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+                        const newData = { ...data };
+
+                        if (newData.sku) newData.sku = `${newData.sku}${suffix}`;
+                        if (newData.barcode) newData.barcode = `${newData.barcode}${suffix}`;
+
+                        return await createProductWithRetry(newData, attempts - 1);
+                    }
+                    throw err;
+                }
+            };
+
             try {
-                const response = await services.products.create(productData);
-                addedProducts.push(response.data);
+                const newProduct = await createProductWithRetry(productData);
+                console.log('Backend Response:', newProduct);
+                addedProducts.push(newProduct);
             } catch (err) {
                 console.error("Failed to import item", name, err);
             }
         }
-        setProducts(prev => [...prev, ...addedProducts]);
+
+        // Only update state if we actually added something
+        if (addedProducts.length > 0) {
+            setProducts(prev => [...prev, ...addedProducts]);
+        }
+
         return addedProducts;
     };
 

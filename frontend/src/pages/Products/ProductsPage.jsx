@@ -150,7 +150,7 @@ const ProductsPage = () => {
     const handleBulkExport = async () => {
         const selectedProducts = products.filter(p => selectedRows.has(p.id));
         const now = new Date();
-        
+
         // Prepare Metadata rows
         const metadata = [
             [settings.store.name || "Store Inventory"],
@@ -170,15 +170,16 @@ const ProductsPage = () => {
         // Prepare Data rows
         // Map the objects to arrays to maintain control over sequence and headers
         const dataHeaders = [
-            "NAME", "SKU", "BARCODE", "CATEGORY", "BRAND", "PRICE", "STOCK", "UNIT", "STATUS", "CREATED AT"
+            "NAME", "SKU", "BARCODE", "CATEGORY", "BRAND", "COST PRICE", "PRICE", "STOCK", "UNIT", "STATUS", "CREATED AT"
         ];
-        
+
         const dataRows = selectedProducts.map(p => [
             p.name,
             p.sku || '-',
             p.barcode || '-',
             p.category || 'Uncategorized',
             p.brand || '-',
+            p.costPrice || 0,
             p.price,
             p.stock,
             p.unit || '-',
@@ -187,7 +188,7 @@ const ProductsPage = () => {
         ]);
 
         const ws = utils.aoa_to_sheet([...metadata, dataHeaders, ...dataRows]);
-        
+
         // Add some basic styling or column widths if possible with xlsx (limited in free version)
         ws['!cols'] = [
             { wch: 30 }, // Name
@@ -195,6 +196,7 @@ const ProductsPage = () => {
             { wch: 15 }, // Barcode
             { wch: 20 }, // Category
             { wch: 15 }, // Brand
+            { wch: 10 }, // Cost Price
             { wch: 10 }, // Price
             { wch: 10 }, // Stock
             { wch: 10 }, // Unit
@@ -204,11 +206,11 @@ const ProductsPage = () => {
 
         const wb = utils.book_new();
         utils.book_append_sheet(wb, ws, "Inventory");
-        
+
         // Visual filename
         const filename = `Inventory_Export_${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}.xlsx`;
         writeFile(wb, filename);
-        
+
         setSelectedRows(new Set());
     };
 
@@ -224,15 +226,40 @@ const ProductsPage = () => {
                 const wb = read(ab, { type: 'array' });
                 const wsname = wb.SheetNames[0];
                 const ws = wb.Sheets[wsname];
-                const data = utils.sheet_to_json(ws);
+
+                // 1. Read as array of arrays first to find the header row
+                const rawData = utils.sheet_to_json(ws, { header: 1 });
+
+                let headerRowIndex = 0;
+                // Look for a row that contains our expected headers
+                // 'name' is the most critical field
+                for (let i = 0; i < Math.min(rawData.length, 20); i++) {
+                    const row = rawData[i];
+                    if (row && Array.isArray(row)) {
+                        const rowStr = row.map(c => String(c).toLowerCase());
+                        if (rowStr.includes('name') || rowStr.includes('product name') || rowStr.includes('sku')) {
+                            headerRowIndex = i;
+                            break;
+                        }
+                    }
+                }
+
+                // 2. Now read objects using the found range
+                const range = utils.decode_range(ws['!ref']);
+                range.s.r = headerRowIndex; // Move start row to header row
+                const newRef = utils.encode_range(range);
+
+                const data = utils.sheet_to_json(ws, { range: headerRowIndex });
+
+                console.log("Import Debug: Found headers at row", headerRowIndex, "Data length:", data.length);
 
                 if (data.length > 0) {
                     if (window.confirm(`Found ${data.length} rows. Import them?`)) {
                         const added = await addManyProducts(data);
                         if (added.length > 0) {
-                            alert(`Successfully imported ${added.length} products!`);
+                            alert(`Successfully imported ${added.length} products! (Skipped ${data.length - added.length} duplicates or empty rows)`);
                         } else {
-                            alert('Import finished but no products were added.');
+                            alert(`Failed to import products. They might be duplicates (SKU must be unique) or empty rows.`);
                         }
                     }
                 }
@@ -308,8 +335,8 @@ const ProductsPage = () => {
                                 >
                                     <Download className="mr-2 h-4 w-4" /> Template
                                 </Button>
-            {/* Product Import Template Wizard Popup */}
-            <ProductTemplateWizard open={showTemplateWizard} onClose={() => setShowTemplateWizard(false)} />
+                                {/* Product Import Template Wizard Popup */}
+                                <ProductTemplateWizard open={showTemplateWizard} onClose={() => setShowTemplateWizard(false)} />
 
                                 {/* Selection/Export Toggle & Trigger */}
                                 <Button
@@ -368,7 +395,8 @@ const ProductsPage = () => {
                                         <TableHead className="min-w-[250px]">Product</TableHead>
                                         <TableHead>Category</TableHead>
                                         <TableHead>Brand</TableHead>
-                                        <TableHead>Price</TableHead>
+                                        <TableHead>Cost Price</TableHead>
+                                        <TableHead>Selling Price</TableHead>
                                         <TableHead>Stock</TableHead>
                                         <TableHead>Unit</TableHead>
                                         <TableHead>Status</TableHead>
@@ -430,11 +458,11 @@ const ProductsPage = () => {
                                                     </TableCell>
                                                     <TableCell className={py}>{product.brand || '-'}</TableCell>
                                                     <TableCell className={py}>
+                                                        <span className="font-medium">₹{Number(product.costPrice || 0).toFixed(2)}</span>
+                                                    </TableCell>
+                                                    <TableCell className={py}>
                                                         <div className="flex flex-col">
-                                                            <span className="font-medium">₹{product.price.toFixed(2)}</span>
-                                                            {product.costPrice && viewMode === 'comfortable' && (
-                                                                <span className="text-xs text-slate-400">Cost: ₹{product.costPrice}</span>
-                                                            )}
+                                                            <span className="font-medium">₹{Number(product.price || 0).toFixed(2)}</span>
                                                         </div>
                                                     </TableCell>
                                                     <TableCell className={py}>

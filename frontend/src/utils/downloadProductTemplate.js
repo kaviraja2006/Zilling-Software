@@ -4,21 +4,18 @@ import { utils, writeFile } from 'xlsx';
 export function downloadProductTemplate() {
   // Define the columns and example row
   const headers = [
-    'NAME', 'SKU', 'BARCODE', 'CATEGORY', 'BRAND', 'PRICE', 'STOCK', 'UNIT', 'STATUS'
+    'NAME', 'SKU', 'BARCODE', 'CATEGORY', 'BRAND', 'COST PRICE', 'PRICE', 'STOCK', 'UNIT', 'STATUS'
   ];
   const exampleRow = [
-    'Sample Product', 'SKU123', '1234567890123', 'Beverages', 'BrandX', 100, 50, 'pc', 'Active'
+    'Sample Product', 'SKU123', '1234567890123', 'Beverages', 'BrandX', 50, 100, 50, 'pc', 'Active'
   ];
-  const notesRow = [
-    'Fill in your product details below. STATUS should be "Active" or "Inactive". Do not change column order or names.'
-  ];
+  // Note: Putting headers on the first row for better compatibility with import parsers
 
-  // Sheet data: notes, headers, example, empty row
+  // Sheet data: headers, example, empty row, then notes
   const data = [
-    notesRow,
     headers,
     exampleRow,
-    ['', '', '', '', '', '', '', '', ''] // Empty row for user
+    ['', '', '', '', '', '', '', '', '', ''], // Empty row for user
   ];
 
   const ws = utils.aoa_to_sheet(data);
@@ -28,6 +25,7 @@ export function downloadProductTemplate() {
     { wch: 15 }, // Barcode
     { wch: 20 }, // Category
     { wch: 15 }, // Brand
+    { wch: 10 }, // Cost Price
     { wch: 10 }, // Price
     { wch: 10 }, // Stock
     { wch: 10 }, // Unit
