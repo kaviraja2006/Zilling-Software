@@ -4,10 +4,10 @@ import { Button } from '../../components/ui/Button';
 import { downloadProductTemplate } from '../../utils/downloadProductTemplate';
 
 const headers = [
-  'NAME', 'SKU', 'BARCODE', 'CATEGORY', 'BRAND', 'PRICE', 'STOCK', 'UNIT', 'STATUS'
+  'NAME', 'SKU', 'BARCODE', 'CATEGORY', 'BRAND', 'COST PRICE', 'PRICE', 'STOCK', 'UNIT', 'STATUS'
 ];
 const exampleRow = [
-  'Sample Product', 'SKU123', '1234567890123', 'Beverages', 'BrandX', 100, 50, 'pc', 'Active'
+  'Sample Product', 'SKU123', '1234567890123', 'Beverages', 'BrandX', 50, 100, 50, 'pc', 'Active'
 ];
 
 export default function ProductTemplateWizard({ open, onClose }) {

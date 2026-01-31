@@ -138,8 +138,8 @@ const BillingSidebar = ({
                         <Input
                             value={amountReceived || ''}
                             onChange={(e) => onPaymentChange('amount', e.target.value)}
-                            disabled={paymentStatus !== 'Partially Paid'}
-                            className={`pl-6 h-8 text-right font-bold text-sm ${paymentStatus !== 'Partially Paid' ? 'bg-slate-100 text-slate-500 cursor-not-allowed' : ''}`}
+                            // disabled={paymentStatus !== 'Partially Paid'} // ENABLED ALWAYS
+                            className="pl-6 h-8 text-right font-bold text-sm"
                         />
                     </div>
                 </div>

@@ -6,26 +6,84 @@ import { ShoppingBag, Calendar, Check, AlertCircle, Printer, ChevronDown, Chevro
 import services from '../../services/api';
 import { useSettings } from '../../context/SettingsContext';
 import { printReceipt } from '../../utils/printer';
-import CustomerForm from './components/CustomerForm';
-import useCustomerForm from '../../hooks/useCustomerForm';
+
+// Indian States
+const INDIAN_STATES = [
+    'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh',
+    'Goa', 'Gujarat', 'Haryana', 'Himachal Pradesh', 'Jharkhand', 'Karnataka',
+    'Kerala', 'Madhya Pradesh', 'Maharashtra', 'Manipur', 'Meghalaya', 'Mizoram',
+    'Nagaland', 'Odisha', 'Punjab', 'Rajasthan', 'Sikkim', 'Tamil Nadu',
+    'Telangana', 'Tripura', 'Uttar Pradesh', 'Uttarakhand', 'West Bengal',
+    'Andaman and Nicobar Islands', 'Chandigarh', 'Dadra and Nagar Haveli and Daman and Diu',
+    'Delhi', 'Jammu and Kashmir', 'Ladakh', 'Lakshadweep', 'Puducherry'
+];
+
+const SOURCE_OPTIONS = ['Walk-in', 'WhatsApp', 'Instagram', 'Referral', 'Other'];
+const TAG_OPTIONS = ['VIP', 'Wholesale', 'Credit'];
+
+// Comprehensive Country Codes
+const COUNTRY_CODES = [
+    { code: '+91', country: 'India', flag: '🇮🇳' },
+    { code: '+1', country: 'USA/Canada', flag: '🇺🇸' },
+    { code: '+44', country: 'UK', flag: '🇬🇧' },
+    { code: '+971', country: 'UAE', flag: '🇦🇪' },
+    { code: '+61', country: 'Australia', flag: '🇦🇺' },
+    { code: '+65', country: 'Singapore', flag: '🇸🇬' },
+    { code: '+60', country: 'Malaysia', flag: '🇲🇾' },
+    { code: '+966', country: 'Saudi Arabia', flag: '🇸🇦' },
+    { code: '+974', country: 'Qatar', flag: '🇶🇦' },
+    { code: '+33', country: 'France', flag: '🇫🇷' },
+    { code: '+49', country: 'Germany', flag: '🇩🇪' },
+    { code: '+81', country: 'Japan', flag: '🇯🇵' },
+    { code: '+86', country: 'China', flag: '🇨🇳' },
+    { code: '+94', country: 'Sri Lanka', flag: '🇱🇰' },
+    { code: '+880', country: 'Bangladesh', flag: '🇧🇩' },
+    { code: '+977', country: 'Nepal', flag: '🇳🇵' },
+];
+
+const CUSTOMER_TYPE_OPTIONS = ['Individual', 'Business'];
+
+// Debounce hook
+const useDebounce = (value, delay) => {
+    const [debouncedValue, setDebouncedValue] = useState(value);
+
+    useEffect(() => {
+        const handler = setTimeout(() => {
+            setDebouncedValue(value);
+        }, delay);
+
+        return () => {
+            clearTimeout(handler);
+        };
+    }, [value, delay]);
+
+    return debouncedValue;
+};
 
 const CustomerDrawer = ({ isOpen, onClose, customer, onSave, initialTab = 'details' }) => {
     const title = customer ? 'Customer Details' : 'Add New Customer';
     const { settings } = useSettings();
     const [activeTab, setActiveTab] = useState('details');
     const [expandedOrder, setExpandedOrder] = useState(null);
-    
-    const {
-        formData,
-        setFormData,
-        validation,
-        touched,
-        handleChange,
-        handleTagToggle,
-        resetForm,
-        isFormValid
-    } = useCustomerForm(customer);
-
+    const [formData, setFormData] = useState({
+        fullName: '',
+        countryCode: '+91', // Default
+        phone: '', // strict 10 digits
+        email: '',
+        customerType: 'Individual',
+        gstin: '',
+        address: {
+            street: '',
+            area: '',
+            city: '',
+            pincode: '',
+            state: ''
+        },
+        source: 'Walk-in',
+        tags: [],
+        loyaltyPoints: 0,
+        notes: ''
+    });
     const [orders, setOrders] = useState([]);
     const [loadingOrders, setLoadingOrders] = useState(false);
     const [duplicates, setDuplicates] = useState([]);
@@ -36,21 +94,81 @@ const CustomerDrawer = ({ isOpen, onClose, customer, onSave, initialTab = 'detai
     const [debouncedPhone, setDebouncedPhone] = useState(formData.phone);
     const [debouncedEmail, setDebouncedEmail] = useState(formData.email);
 
-    useEffect(() => {
-        const h = setTimeout(() => {
-            setDebouncedPhone(formData.phone);
-            setDebouncedEmail(formData.email);
-        }, 300);
-        return () => clearTimeout(h);
-    }, [formData.phone, formData.email]);
+    // Parse existing phone number into Code + Number
+    const parsePhone = (fullPhone) => {
+        if (!fullPhone) return { code: '+91', number: '' };
+
+        // Try to match known codes
+        // Sort codes by length desc to match +971 before +91 if ambiguous? 
+        // Actually +91 is 3 chars, +971 is 4.
+        const sortedCodes = [...COUNTRY_CODES].sort((a, b) => b.code.length - a.code.length);
+
+        for (const c of sortedCodes) {
+            if (fullPhone.startsWith(c.code)) {
+                return {
+                    code: c.code,
+                    number: fullPhone.slice(c.code.length).trim()
+                };
+            }
+        }
+
+        // Fallback or if no code found (assume raw number is just number, default +91)
+        return { code: '+91', number: fullPhone };
+    };
+
+    const [isEditing, setIsEditing] = useState(false);
 
     useEffect(() => {
-        if (isOpen) {
-            resetForm(customer);
-            setActiveTab(initialTab || 'details');
-            setDuplicates([]);
+        if (customer) {
+            setIsEditing(false); // Valid customer = View Mode
+            const { code, number } = parsePhone(customer.phone);
+            setFormData({
+                fullName: customer.fullName || `${customer.firstName || ''} ${customer.lastName || ''}`.trim(),
+                countryCode: code,
+                phone: number,
+                email: customer.email || '',
+                customerType: customer.customerType || 'Individual',
+                gstin: customer.gstin || '',
+                address: customer.address || {
+                    street: '',
+                    area: '',
+                    city: '',
+                    pincode: '',
+                    state: ''
+                },
+                source: customer.source || 'Walk-in',
+                tags: customer.tags || [],
+                loyaltyPoints: customer.loyaltyPoints || 0,
+                notes: customer.notes || ''
+            });
+        } else {
+            setIsEditing(true); // New customer = Edit Mode
+            setFormData({
+                fullName: '',
+                countryCode: '+91',
+                phone: '',
+                email: '',
+                customerType: 'Individual',
+                gstin: '',
+                address: {
+                    street: '',
+                    area: '',
+                    city: '',
+                    pincode: '',
+                    state: ''
+                },
+                source: 'Walk-in',
+                tags: [],
+                loyaltyPoints: 0,
+                notes: ''
+            });
         }
-    }, [customer, isOpen, resetForm, initialTab]);
+
+        setActiveTab(initialTab || 'details');
+        setValidation({});
+        setTouched({});
+        setDuplicates([]);
+    }, [customer, isOpen]);
 
     useEffect(() => {
         if (customer && activeTab === 'history' && isOpen) {
@@ -90,16 +208,135 @@ const CustomerDrawer = ({ isOpen, onClose, customer, onSave, initialTab = 'detai
         searchDuplicates();
     }, [debouncedPhone, debouncedEmail, customer]);
 
-    const handleSave = (addAnother = false) => {
-        if (!isFormValid()) {
-            alert("Please fill all required fields correctly.");
+    const handleChange = (e) => {
+        const { name, value } = e.target;
+
+        if (name === 'phone') {
+            // Strict number only
+            const numericValue = value.replace(/[^0-9]/g, '');
+            // Limit to 10
+            if (numericValue.length > 10) return;
+
+            setFormData(prev => ({ ...prev, phone: numericValue }));
+            setTouched(prev => ({ ...prev, phone: true }));
+            validateField('phone', numericValue);
             return;
         }
 
-        onSave(formData, addAnother);
+        if (name.startsWith('address.')) {
+            const addressField = name.split('.')[1];
+            setFormData(prev => ({
+                ...prev,
+                address: { ...prev.address, [addressField]: value }
+            }));
+        } else {
+            setFormData(prev => ({ ...prev, [name]: value }));
+        }
+        setTouched(prev => ({ ...prev, [name]: true }));
+        validateField(name, value);
+    };
+
+    const validateField = (name, value) => {
+        const newValidation = { ...validation };
+
+        switch (name) {
+            case 'fullName':
+                if (!value.trim()) {
+                    newValidation.fullName = { valid: false, message: 'Name is required' };
+                } else {
+                    newValidation.fullName = { valid: true };
+                }
+                break;
+            case 'phone':
+                if (!value.trim()) {
+                    newValidation.phone = { valid: false, message: 'Phone is required' };
+                } else if (value.length !== 10) {
+                    newValidation.phone = { valid: false, message: 'Phone must be exactly 10 digits' };
+                } else {
+                    newValidation.phone = { valid: true };
+                }
+                break;
+            case 'email':
+                if (value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+                    newValidation.email = { valid: false, message: 'Invalid email format' };
+                } else {
+                    newValidation.email = { valid: true };
+                }
+                break;
+            case 'gstin':
+                if (formData.customerType === 'Business' && !value) {
+                    newValidation.gstin = { valid: false, message: 'GSTIN is required for business' };
+                } else if (value && !/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/.test(value)) {
+                    newValidation.gstin = { valid: false, message: 'Invalid GSTIN format' };
+                } else {
+                    newValidation.gstin = { valid: true };
+                }
+                break;
+            default:
+                break;
+        }
+
+        setValidation(newValidation);
+    };
+
+    const handleTagToggle = (tag) => {
+        setFormData(prev => ({
+            ...prev,
+            tags: prev.tags.includes(tag)
+                ? prev.tags.filter(t => t !== tag)
+                : [...prev.tags, tag]
+        }));
+    };
+
+    const handleSave = (addAnother = false) => {
+        // Validate required fields
+        if (!formData.fullName || !formData.phone) {
+            alert("Name and Phone are required");
+            return;
+        }
+
+        if (formData.phone.length !== 10) {
+            alert("Phone number must be exactly 10 digits");
+            return;
+        }
+
+        if (formData.customerType === 'Business' && !formData.gstin) {
+            alert("GSTIN is required for business customers");
+            return;
+        }
+
+        // Combine code + phone
+        const finalData = {
+            ...formData,
+            phone: `${formData.countryCode}${formData.phone}`
+        };
+
+        onSave(finalData, addAnother);
 
         if (addAnother) {
-            resetForm();
+            // Reset form for next entry
+            setFormData({
+                fullName: '',
+                countryCode: '+91',
+                phone: '',
+                email: '',
+                customerType: 'Individual',
+                gstin: '',
+                address: {
+                    street: '',
+                    area: '',
+                    city: '',
+                    pincode: '',
+                    state: ''
+                },
+                source: 'Walk-in',
+                tags: [],
+                loyaltyPoints: 0,
+                notes: ''
+            });
+            setValidation({});
+            setTouched({});
+            setDuplicates([]);
         }
     };
 
@@ -125,21 +362,33 @@ const CustomerDrawer = ({ isOpen, onClose, customer, onSave, initialTab = 'detai
     return (
         <Drawer isOpen={isOpen} onClose={onClose} title={title} width="max-w-3xl">
             <div className="h-full flex flex-col">
-                {/* Tabs */}
+                {/* Tabs & Edit Button */}
                 {customer && (
-                    <div className="flex border-b border-slate-200 mb-6">
-                        <button
-                            className={`px-4 py-2 text-sm font-medium ${activeTab === 'details' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-slate-600 hover:text-slate-900'}`}
-                            onClick={() => setActiveTab('details')}
-                        >
-                            Profile
-                        </button>
-                        <button
-                            className={`px-4 py-2 text-sm font-medium ${activeTab === 'history' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-slate-600 hover:text-slate-900'}`}
-                            onClick={() => setActiveTab('history')}
-                        >
-                            Purchase History
-                        </button>
+                    <div className="flex border-b border-slate-200 mb-6 justify-between items-center">
+                        <div className="flex">
+                            <button
+                                className={`px-4 py-2 text-sm font-medium ${activeTab === 'details' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-slate-600 hover:text-slate-900'}`}
+                                onClick={() => setActiveTab('details')}
+                            >
+                                Profile
+                            </button>
+                            <button
+                                className={`px-4 py-2 text-sm font-medium ${activeTab === 'history' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-slate-600 hover:text-slate-900'}`}
+                                onClick={() => setActiveTab('history')}
+                            >
+                                Purchase History
+                            </button>
+                        </div>
+                        {activeTab === 'details' && !isEditing && (
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-blue-600 hover:bg-blue-50 mr-2"
+                                onClick={() => setIsEditing(true)}
+                            >
+                                ✏️ Edit
+                            </Button>
+                        )}
                     </div>
                 )}
 
@@ -148,9 +397,12 @@ const CustomerDrawer = ({ isOpen, onClose, customer, onSave, initialTab = 'detai
                         <div className="space-y-6">
                             {/* Customer ID (read-only for existing customers) */}
                             {customer && customer.customerId && (
-                                <div className="bg-blue-50 p-3 rounded-lg">
-                                    <p className="text-xs text-slate-600">Customer ID</p>
-                                    <p className="font-mono font-semibold text-blue-900">{customer.customerId}</p>
+                                <div className="bg-blue-50 p-3 rounded-lg flex justify-between items-center">
+                                    <div>
+                                        <p className="text-xs text-slate-600">Customer ID</p>
+                                        <p className="font-mono font-semibold text-blue-900">{customer.customerId}</p>
+                                    </div>
+                                    {!isEditing && <span className="text-xs bg-slate-200 px-2 py-1 rounded text-slate-600 font-medium">Read Only</span>}
                                 </div>
                             )}
 
@@ -183,14 +435,299 @@ const CustomerDrawer = ({ isOpen, onClose, customer, onSave, initialTab = 'detai
                                 </div>
                             )}
 
-                            {/* Basic Information, Address, Source & Tags handled by CustomerForm */}
-                            <CustomerForm 
-                                initialData={formData}
-                                onChange={handleChange}
-                                validation={validation}
-                                touched={touched}
-                                onTagToggle={handleTagToggle}
-                            />
+                            {/* Basic Information */}
+                            <div className="space-y-4">
+                                <h4 className="font-semibold text-slate-900 border-b border-slate-100 pb-2">Basic Information</h4>
+
+                                {/* Customer Type */}
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium text-slate-700">
+                                        Type <span className="text-red-500">*</span>
+                                    </label>
+                                    <div className="flex gap-4">
+                                        {CUSTOMER_TYPE_OPTIONS.map(type => (
+                                            <label key={type} className={`flex items-center gap-2 ${!isEditing ? 'cursor-default opacity-70' : 'cursor-pointer'}`}>
+                                                <input
+                                                    type="radio"
+                                                    name="customerType"
+                                                    value={type}
+                                                    checked={formData.customerType === type}
+                                                    onChange={handleChange}
+                                                    disabled={!isEditing}
+                                                    className="w-4 h-4 text-blue-600"
+                                                />
+                                                <span className="text-sm text-slate-700">{type}</span>
+                                            </label>
+                                        ))}
+                                    </div>
+                                    <p className="text-xs text-slate-500">Select customer type for tax purposes</p>
+                                </div>
+
+                                {/* Full Name */}
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium text-slate-700">
+                                        Full Name <span className="text-red-500">*</span>
+                                    </label>
+                                    <div className="relative">
+                                        <Input
+                                            name="fullName"
+                                            value={formData.fullName}
+                                            onChange={handleChange}
+                                            placeholder="e.g. John Doe"
+                                            disabled={!isEditing}
+                                            className={touched.fullName && validation.fullName && !validation.fullName.valid ? 'border-red-300' : ''}
+                                        />
+                                        <div className="absolute right-3 top-3">
+                                            {getValidationIcon('fullName')}
+                                        </div>
+                                    </div>
+                                    {touched.fullName && validation.fullName && !validation.fullName.valid && (
+                                        <p className="text-xs text-red-600">{validation.fullName.message}</p>
+                                    )}
+                                    <p className="text-xs text-slate-500">Enter customer's full name</p>
+                                </div>
+
+                                {/* Phone & Email */}
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-medium text-slate-700">
+                                            Phone <span className="text-red-500">*</span>
+                                        </label>
+                                        <div className="flex rounded-lg shadow-sm">
+                                            <select
+                                                name="countryCode"
+                                                value={formData.countryCode}
+                                                onChange={handleChange}
+                                                disabled={!isEditing}
+                                                className={`h-10 px-2 rounded-l-lg border border-r-0 border-slate-200 bg-slate-50 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent min-w-[80px] ${!isEditing ? 'opacity-70' : ''}`}
+                                            >
+                                                {COUNTRY_CODES.map(c => (
+                                                    <option key={c.code} value={c.code}>
+                                                        {c.flag} {c.code}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            <div className="relative flex-1">
+                                                <Input
+                                                    name="phone"
+                                                    value={formData.phone}
+                                                    onChange={handleChange}
+                                                    placeholder="9876543210"
+                                                    disabled={!isEditing}
+                                                    className={`rounded-l-none ${touched.phone && validation.phone && !validation.phone.valid ? 'border-red-300' : ''}`}
+                                                />
+                                                <div className="absolute right-3 top-3">
+                                                    {searchingDuplicates && formData.phone ? (
+                                                        <div className="animate-spin h-4 w-4 border-2 border-blue-600 border-t-transparent rounded-full"></div>
+                                                    ) : (
+                                                        getValidationIcon('phone')
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        {touched.phone && validation.phone && !validation.phone.valid && (
+                                            <p className="text-xs text-red-600">{validation.phone.message}</p>
+                                        )}
+                                        <p className="text-xs text-slate-500">10-digit number without spaces</p>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-medium text-slate-700">Email</label>
+                                        <div className="relative">
+                                            <Input
+                                                name="email"
+                                                type="email"
+                                                value={formData.email}
+                                                onChange={handleChange}
+                                                placeholder="john@example.com"
+                                                disabled={!isEditing}
+                                                className={touched.email && validation.email && !validation.email.valid ? 'border-red-300' : ''}
+                                            />
+                                            <div className="absolute right-3 top-3">
+                                                {searchingDuplicates && formData.email ? (
+                                                    <div className="animate-spin h-4 w-4 border-2 border-blue-600 border-t-transparent rounded-full"></div>
+                                                ) : (
+                                                    getValidationIcon('email')
+                                                )}
+                                            </div>
+                                        </div>
+                                        {touched.email && validation.email && !validation.email.valid && (
+                                            <p className="text-xs text-red-600">{validation.email.message}</p>
+                                        )}
+                                        <p className="text-xs text-slate-500">Optional email address</p>
+                                    </div>
+                                </div>
+
+                                {/* GSTIN (conditional) */}
+                                {formData.customerType === 'Business' && (
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-medium text-slate-700">
+                                            GSTIN <span className="text-red-500">*</span>
+                                        </label>
+                                        <div className="relative">
+                                            <Input
+                                                name="gstin"
+                                                value={formData.gstin}
+                                                onChange={handleChange}
+                                                placeholder="22AAAAA0000A1Z5"
+                                                disabled={!isEditing}
+                                                className={`uppercase ${touched.gstin && validation.gstin && !validation.gstin.valid ? 'border-red-300' : ''}`}
+                                                maxLength={15}
+                                            />
+                                            <div className="absolute right-3 top-3">
+                                                {getValidationIcon('gstin')}
+                                            </div>
+                                        </div>
+                                        {touched.gstin && validation.gstin && !validation.gstin.valid && (
+                                            <p className="text-xs text-red-600">{validation.gstin.message}</p>
+                                        )}
+                                        <p className="text-xs text-slate-500">15-character GST identification number</p>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Address */}
+                            <div className="space-y-4">
+                                <h4 className="font-semibold text-slate-900 border-b border-slate-100 pb-2">Address</h4>
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium text-slate-700">Street</label>
+                                    <Input
+                                        name="address.street"
+                                        value={formData.address.street}
+                                        onChange={handleChange}
+                                        placeholder="House/Flat No., Building Name"
+                                        disabled={!isEditing}
+                                    />
+                                    <p className="text-xs text-slate-500">Building number and street name</p>
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-medium text-slate-700">Area</label>
+                                        <Input
+                                            name="address.area"
+                                            value={formData.address.area}
+                                            onChange={handleChange}
+                                            placeholder="Locality/Area"
+                                            disabled={!isEditing}
+                                        />
+                                        <p className="text-xs text-slate-500">Neighborhood or locality</p>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-medium text-slate-700">City</label>
+                                        <Input
+                                            name="address.city"
+                                            value={formData.address.city}
+                                            onChange={handleChange}
+                                            placeholder="City"
+                                            disabled={!isEditing}
+                                        />
+                                        <p className="text-xs text-slate-500">City or town name</p>
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-medium text-slate-700">Pincode</label>
+                                        <Input
+                                            name="address.pincode"
+                                            value={formData.address.pincode}
+                                            onChange={handleChange}
+                                            placeholder="400001"
+                                            maxLength={6}
+                                            disabled={!isEditing}
+                                        />
+                                        <p className="text-xs text-slate-500">6-digit postal code</p>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-medium text-slate-700">State</label>
+                                        <select
+                                            name="address.state"
+                                            value={formData.address.state}
+                                            onChange={handleChange}
+                                            disabled={!isEditing}
+                                            className="flex h-10 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                                        >
+                                            <option value="">Select State</option>
+                                            {INDIAN_STATES.map(state => (
+                                                <option key={state} value={state}>{state}</option>
+                                            ))}
+                                        </select>
+                                        <p className="text-xs text-slate-500">Select from dropdown</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Source & Tags */}
+                            <div className="space-y-4">
+                                <h4 className="font-semibold text-slate-900 border-b border-slate-100 pb-2">Additional Details</h4>
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-medium text-slate-700">Source</label>
+                                        <select
+                                            name="source"
+                                            value={formData.source}
+                                            onChange={handleChange}
+                                            disabled={!isEditing}
+                                            className="flex h-10 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                                        >
+                                            {SOURCE_OPTIONS.map(source => (
+                                                <option key={source} value={source}>{source}</option>
+                                            ))}
+                                        </select>
+                                        <p className="text-xs text-slate-500">How did they find you?</p>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-medium text-slate-700">Loyalty Points</label>
+                                        <Input
+                                            name="loyaltyPoints"
+                                            type="number"
+                                            value={formData.loyaltyPoints}
+                                            onChange={handleChange}
+                                            placeholder="0"
+                                            min="0"
+                                            disabled={!isEditing}
+                                        />
+                                        <p className="text-xs text-slate-500">Reward points balance</p>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium text-slate-700">Tags</label>
+                                    <div className="flex gap-2 flex-wrap">
+                                        {TAG_OPTIONS.map(tag => (
+                                            <button
+                                                key={tag}
+                                                type="button"
+                                                onClick={() => handleTagToggle(tag)}
+                                                disabled={!isEditing}
+                                                className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${!isEditing ? 'opacity-70 cursor-default' : ''} ${formData.tags.includes(tag)
+                                                    ? tag === 'VIP' ? 'bg-purple-600 text-white'
+                                                        : tag === 'Wholesale' ? 'bg-blue-600 text-white'
+                                                            : 'bg-orange-600 text-white'
+                                                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                                                    }`}
+                                            >
+                                                {formData.tags.includes(tag) && <Check size={12} className="inline mr-1" />}
+                                                {tag}
+                                            </button>
+                                        ))}
+                                    </div>
+                                    <p className="text-xs text-slate-500">Click to add/remove tags</p>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium text-slate-700">Notes</label>
+                                    <textarea
+                                        name="notes"
+                                        value={formData.notes}
+                                        onChange={handleChange}
+                                        placeholder="Additional notes about this customer..."
+                                        rows={3}
+                                        disabled={!isEditing}
+                                        className="flex w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                                    />
+                                    <p className="text-xs text-slate-500">Any special instructions or preferences</p>
+                                </div>
+                            </div>
 
                             {/* Account Summary (for existing customers) */}
                             {customer && (
@@ -341,19 +878,43 @@ const CustomerDrawer = ({ isOpen, onClose, customer, onSave, initialTab = 'detai
                 <div className="pt-4 flex gap-3 border-t border-slate-100 mt-4">
                     {activeTab === 'details' && (
                         <>
-                            <Button variant="outline" className="flex-1" onClick={onClose}>Cancel</Button>
-                            {!customer && (
-                                <Button
-                                    variant="outline"
-                                    className="flex-1 border-blue-600 text-blue-600 hover:bg-blue-50"
-                                    onClick={() => handleSave(true)}
-                                >
-                                    Save & Add Another
-                                </Button>
+                            {/* View Mode: Only Close */}
+                            {!isEditing && customer && (
+                                <Button variant="outline" className="w-full" onClick={onClose}>Close</Button>
                             )}
-                            <Button className="flex-1" variant="primary" onClick={() => handleSave(false)}>
-                                {customer ? 'Update Customer' : 'Save Customer'}
-                            </Button>
+
+                            {/* Edit Mode */}
+                            {isEditing && (
+                                <>
+                                    <Button
+                                        variant="outline"
+                                        className="flex-1"
+                                        onClick={() => {
+                                            if (customer) {
+                                                setIsEditing(false); // Cancel edit, go back to view
+                                            } else {
+                                                onClose(); // Cancel new creation
+                                            }
+                                        }}
+                                    >
+                                        Cancel
+                                    </Button>
+
+                                    {!customer && (
+                                        <Button
+                                            variant="outline"
+                                            className="flex-1 border-blue-600 text-blue-600 hover:bg-blue-50"
+                                            onClick={() => handleSave(true)}
+                                        >
+                                            Save & Add Another
+                                        </Button>
+                                    )}
+
+                                    <Button className="flex-1" variant="primary" onClick={() => handleSave(false)}>
+                                        {customer ? 'Update Customer' : 'Save Customer'}
+                                    </Button>
+                                </>
+                            )}
                         </>
                     )}
                     {activeTab === 'history' && (
