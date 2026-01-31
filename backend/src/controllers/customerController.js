@@ -98,6 +98,7 @@ const createCustomer = asyncHandler(async (req, res) => {
         }).optional(),
         customerType: Joi.string().valid('Individual', 'Business').optional(),
         gstin: Joi.string().allow('').optional(),
+        countryCode: Joi.string().allow('').optional(), // Added to support synchronized frontend forms
         source: Joi.string().valid('Walk-in', 'WhatsApp', 'Instagram', 'Referral', 'Other').optional(),
         tags: Joi.array().items(Joi.string().valid('VIP', 'Wholesale', 'Credit')).optional(),
         loyaltyPoints: Joi.number().optional(),
