@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Drawer } from '../../components/ui/Drawer';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
-import { ShoppingBag, Calendar, Check, AlertCircle, X, Printer, ChevronDown, ChevronUp } from 'lucide-react';
+import { ShoppingBag, Calendar, Check, AlertCircle, Printer, ChevronDown, ChevronUp } from 'lucide-react';
 import services from '../../services/api';
 import { useSettings } from '../../context/SettingsContext';
 import { printReceipt } from '../../utils/printer';
@@ -88,11 +88,11 @@ const CustomerDrawer = ({ isOpen, onClose, customer, onSave, initialTab = 'detai
     const [loadingOrders, setLoadingOrders] = useState(false);
     const [duplicates, setDuplicates] = useState([]);
     const [searchingDuplicates, setSearchingDuplicates] = useState(false);
-    const [validation, setValidation] = useState({});
-    const [touched, setTouched] = useState({});
 
-    const debouncedPhone = useDebounce(formData.phone, 300);
-    const debouncedEmail = useDebounce(formData.email, 300);
+    // Get debounced values from formData for duplicate search
+    // (Could also move this to hook but keeping here for now as it's specific to this view)
+    const [debouncedPhone, setDebouncedPhone] = useState(formData.phone);
+    const [debouncedEmail, setDebouncedEmail] = useState(formData.email);
 
     // Parse existing phone number into Code + Number
     const parsePhone = (fullPhone) => {

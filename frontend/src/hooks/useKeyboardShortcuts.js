@@ -8,7 +8,7 @@ const useKeyboardShortcuts = (keyMap) => {
             const isInputFocused = tagName === 'input' || tagName === 'textarea';
 
             // Allow F-keys and shortcuts (Alt/Ctrl) even in inputs
-            if (event.key.startsWith('F') || event.altKey || (event.ctrlKey && ['p', 'm', 't', 'w'].includes(event.key.toLowerCase()))) {
+            if (event.key && (event.key.startsWith('F') || event.altKey || (event.ctrlKey && ['p', 'm', 't', 'w'].includes(event.key.toLowerCase())))) {
                 event.preventDefault();
             } else if (isInputFocused) {
                 // If typing in input and not a special hotkey, let it behave normally.
