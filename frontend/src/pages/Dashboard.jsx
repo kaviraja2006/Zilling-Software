@@ -34,17 +34,17 @@ const StatCard = ({ title, value, change, changeType, icon: Icon, color }) => (
     <Card className="shadow-md hover:shadow-lg transition-shadow border-none overflow-hidden h-full">
         <CardContent className="p-0 h-full">
             <div className="flex items-stretch h-full">
-                <div className="flex-1 p-6 flex items-center space-x-4 min-w-0">
-                    <div className={cn("p-3 rounded-full shadow-sm flex-shrink-0", color)}>
-                        <Icon size={24} className="text-white" />
+                <div className="flex-1 p-4 flex items-center space-x-4 min-w-0">
+                    <div className={cn("p-2.5 rounded-full shadow-sm flex-shrink-0", color)}>
+                        <Icon size={20} className="text-white" />
                     </div>
                     <div className="min-w-0">
-                        <p className="text-sm font-medium text-slate-500 truncate">{title}</p>
-                        <h3 className="text-2xl font-bold text-slate-900 truncate" title={value}>{value}</h3>
+                        <p className="text-xs font-medium text-slate-500 truncate">{title}</p>
+                        <h3 className="text-xl font-bold text-slate-900 truncate" title={value}>{value}</h3>
                     </div>
                 </div>
                 {change && (
-                    <div className={cn("w-24 flex-shrink-0 flex items-center justify-center font-bold text-base border-l h-auto",
+                    <div className={cn("w-20 md:w-24 flex-shrink-0 flex items-center justify-center font-bold text-sm border-l h-auto",
                         changeType === 'increase'
                             ? "bg-green-50 text-green-700 border-green-100"
                             : "bg-rose-50 text-rose-700 border-rose-100"
@@ -213,12 +213,12 @@ const Dashboard = () => {
     };
 
     return (
-        <div className="space-y-6 animate-in fade-in duration-500">
+        <div className="space-y-5 animate-in fade-in duration-500">
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold text-slate-900 tracking-tight">KWIQBILL Dashboard</h1>
-                    <p className="text-slate-500 text-sm mt-1">Overview of your store's performance</p>
+                    <h1 className="text-2xl font-bold text-slate-900 tracking-tight">KWIQBILL Dashboard</h1>
+                    <p className="text-slate-500 text-xs mt-0.5">Overview of your store's performance</p>
                 </div>
 
                 <div className="flex flex-wrap gap-3 items-center">
@@ -229,7 +229,7 @@ const Dashboard = () => {
                                 key={range}
                                 onClick={() => setDateRange(range)}
                                 className={cn(
-                                    "px-3 py-1.5 text-sm font-medium rounded-md transition-all capitalize",
+                                    "px-2.5 py-1 text-xs font-medium rounded-md transition-all capitalize",
                                     dateRange === range ? "bg-primary-main text-white shadow-sm" : "text-slate-600 hover:bg-slate-50"
                                 )}
                             >
@@ -257,80 +257,79 @@ const Dashboard = () => {
 
                     <div className="h-6 w-px bg-slate-200 mx-1 hidden md:block"></div>
 
-                    <Button onClick={() => navigate('/expenses')} variant="outline" className="bg-white shadow-sm">
+                    <Button onClick={() => navigate('/expenses')} variant="outline" className="bg-white shadow-sm h-9 text-sm">
                         <ArrowDownRight className="mr-2 h-4 w-4 text-amber-600" /> Add Expense
                     </Button>
-                    <Button onClick={() => navigate('/billing')} className="bg-primary-main hover:bg-primary-hover shadow-md text-white">
-                        <ShoppingCart className="mr-2 h-4 w-4" /> New Sale <span className="ml-2 opacity-70 text-xs hidden lg:inline">Alt+N</span>
+                    <Button onClick={() => navigate('/billing')} className="bg-primary-main hover:bg-primary-hover shadow-md text-white h-9 text-sm">
+                        <ShoppingCart className="mr-2 h-4 w-4" /> New Sale <span className="ml-2 opacity-70 text-[11px] hidden lg:inline">Alt+N</span>
                     </Button>
                 </div>
             </div>
 
             {/* Main Stats */}
-            <div className="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-5 grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
                 {stats.map((stat, i) => (
                     <StatCard key={i} {...stat} />
                 ))}
             </div>
 
             {/* Middle Section: Cash Flow & Top Inventory */}
-            <div className="grid gap-6 grid-cols-1 lg:grid-cols-3">
+            <div className="grid gap-5 grid-cols-1 lg:grid-cols-3">
 
                 {/* Cash Flow Summary */}
                 <Card className="shadow-md border-none lg:col-span-1 min-h-[18rem] md:h-[24rem]">
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                            <IndianRupee className="h-5 w-5 text-indigo-600" />
+                    <CardHeader className="py-3 px-4">
+                        <CardTitle className="flex items-center gap-2 text-base">
+                            <IndianRupee className="h-4.5 w-4.5 text-indigo-600" />
                             Cash Flow
                         </CardTitle>
-                        <CardDescription>Revenue vs Expenses analysis</CardDescription>
+                        <CardDescription className="text-[11px]">Revenue vs Expenses analysis</CardDescription>
                     </CardHeader>
-                    <CardContent>
-                        <div className="space-y-8">
+                    <CardContent className="py-5 px-6">
+                        <div className="space-y-5">
                             {(() => {
                                 const rev = statsData.sales?.value || 0;
                                 const exp = financials.totalExpenses || 0;
                                 const maxVal = Math.max(rev, exp, 1);
 
                                 return (
-                                    <>
-                                        <div className="space-y-2">
-                                            <div className="flex justify-between text-sm font-medium">
-                                                <span className="text-emerald-700">Revenue</span>
-                                                <span>₹{rev.toFixed(2)}</span>
+                                        <div className="space-y-4">
+                                            <div className="space-y-1">
+                                                <div className="flex justify-between text-[11px] font-semibold">
+                                                    <span className="text-emerald-700">Revenue</span>
+                                                    <span>₹{rev.toFixed(2)}</span>
+                                                </div>
+                                                <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                                                    <div
+                                                        className="h-full bg-emerald-500 rounded-full transition-all duration-1000"
+                                                        style={{ width: `${(rev / maxVal) * 100}%` }}
+                                                    />
+                                                </div>
                                             </div>
-                                            <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
-                                                <div
-                                                    className="h-full bg-emerald-500 rounded-full transition-all duration-500"
-                                                    style={{ width: `${(rev / maxVal) * 100}%` }}
-                                                ></div>
+                                            <div className="space-y-1">
+                                                <div className="flex justify-between text-[11px] font-semibold">
+                                                    <span className="text-amber-700">Expenses</span>
+                                                    <span>₹{exp.toFixed(2)}</span>
+                                                </div>
+                                                <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                                                    <div
+                                                        className="h-full bg-amber-500 rounded-full transition-all duration-1000"
+                                                        style={{ width: `${(exp / maxVal) * 100}%` }}
+                                                    />
+                                                </div>
                                             </div>
                                         </div>
-
-                                        <div className="space-y-2">
-                                            <div className="flex justify-between text-sm font-medium">
-                                                <span className="text-amber-700">Expenses</span>
-                                                <span>₹{exp.toFixed(2)}</span>
-                                            </div>
-                                            <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
-                                                <div
-                                                    className="h-full bg-amber-500 rounded-full transition-all duration-500"
-                                                    style={{ width: `${(exp / maxVal) * 100}%` }}
-                                                ></div>
-                                            </div>
-                                        </div>
-                                    </>
                                 );
                             })()}
 
-                            <div className="pt-6 border-t border-slate-100 flex justify-between items-end mt-auto">
-                                <div>
-                                    <p className="text-xs text-slate-500 uppercase font-semibold">Net Cash Flow</p>
-                                    <p className={cn("text-xl font-bold", financials.netProfit >= 0 ? "text-indigo-600" : "text-rose-600")}>
-                                        {financials.netProfit >= 0 ? '+' : ''}₹{(financials.netProfit || 0).toFixed(2)}
-                                    </p>
+                            <div className="pt-4 border-t border-slate-100 mt-4">
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Net Cash Flow</p>
+                                <div className="flex items-center justify-between">
+                                    <h4 className={cn("text-lg font-bold", (financials.netProfit || 0) >= 0 ? "text-emerald-600" : "text-rose-600")}>
+                                        {(financials.netProfit || 0) < 0 ? '-' : ''}₹{Math.abs(financials.netProfit || 0).toFixed(2)}
+                                    </h4>
+                                    <ActivityBadge />
                                 </div>
-                                <ActivityBadge loading={false} />
                             </div>
                         </div>
                     </CardContent>
@@ -364,11 +363,11 @@ const Dashboard = () => {
                                 </TableHeader>
                                 <TableBody>
                                     {topProducts.length > 0 ? topProducts.slice(0, 3).map((product, idx) => (
-                                        <TableRow key={idx} className="hover:bg-slate-50">
-                                            <TableCell className="font-medium text-slate-700 py-3">{product.name}</TableCell>
-                                            <TableCell className="text-right py-3">{product.quantity}</TableCell>
-                                            <TableCell className="text-right font-medium py-3">₹{(product.revenue || 0).toFixed(2)}</TableCell>
-                                            <TableCell className="text-right py-3">
+                                        <TableRow key={idx} className="h-9 hover:bg-slate-50 transition-colors">
+                                            <TableCell className="font-semibold text-slate-800 text-xs py-1.5">{product.name}</TableCell>
+                                            <TableCell className="text-right text-xs py-1.5">{product.quantity}</TableCell>
+                                            <TableCell className="text-right font-bold text-slate-900 text-xs py-1.5">₹{(product.revenue || 0).toFixed(2)}</TableCell>
+                                            <TableCell className="text-right py-1.5">
                                                 <span className={cn(
                                                     "text-sm font-bold",
                                                     (product.marginPercent || 0) >= 0 ? "text-emerald-600" : "text-rose-600"
@@ -379,7 +378,7 @@ const Dashboard = () => {
                                         </TableRow>
                                     )) : (
                                         <TableRow>
-                                            <TableCell colSpan={4} className="text-center py-8 text-slate-500">
+                                            <TableCell colSpan={4} className="text-center py-6 text-slate-500 text-xs">
                                                 No sales data for this period
                                             </TableCell>
                                         </TableRow>
@@ -414,22 +413,22 @@ const Dashboard = () => {
                         </TableHeader>
                         <TableBody>
                             {topProducts.map((product, idx) => (
-                                <TableRow key={idx}>
-                                    <TableCell className="font-medium text-slate-800">{product.name}</TableCell>
-                                    <TableCell className="text-right">{product.quantity}</TableCell>
-                                    <TableCell className="text-right font-medium">₹{(product.revenue || 0).toFixed(2)}</TableCell>
-                                    <TableCell className="text-right">
-                                        <div className="flex justify-end">
-                                            <Badge variant="outline" className={cn(
-                                                "bg-opacity-50 border-0 w-16 justify-center",
-                                                (product.marginPercent || 0) > 30 ? "bg-emerald-50 text-emerald-700" :
-                                                    (product.marginPercent || 0) > 10 ? "bg-amber-50 text-amber-700" : "bg-rose-50 text-rose-700"
-                                            )}>
-                                                {(product.marginPercent || 0).toFixed(1)}%
-                                            </Badge>
-                                        </div>
-                                    </TableCell>
-                                </TableRow>
+                                    <TableRow key={idx} className="h-9 hover:bg-slate-50 transition-colors">
+                                        <TableCell className="font-semibold text-slate-800 text-xs py-1.5">{product.name}</TableCell>
+                                        <TableCell className="text-right text-xs py-1.5">{product.quantity}</TableCell>
+                                        <TableCell className="text-right font-bold text-slate-900 text-xs py-1.5">₹{(product.revenue || 0).toFixed(2)}</TableCell>
+                                        <TableCell className="text-right py-1.5">
+                                            <div className="flex justify-end">
+                                                <Badge variant="outline" className={cn(
+                                                    "bg-opacity-50 border-0 h-5 px-1.5 text-[10px] w-14 justify-center font-bold",
+                                                    (product.marginPercent || 0) > 30 ? "bg-emerald-50 text-emerald-700" :
+                                                        (product.marginPercent || 0) > 10 ? "bg-amber-50 text-amber-700" : "bg-rose-50 text-rose-700"
+                                                )}>
+                                                    {(product.marginPercent || 0).toFixed(1)}%
+                                                </Badge>
+                                            </div>
+                                        </TableCell>
+                                    </TableRow>
                             ))}
                         </TableBody>
                     </Table>
@@ -438,10 +437,10 @@ const Dashboard = () => {
 
             {/* Recent Transactions with Filters */}
             <Card className="shadow-md border-none">
-                <CardHeader className="flex flex-row items-center justify-between">
+                <CardHeader className="flex flex-row items-center justify-between py-4 px-5">
                     <div>
-                        <CardTitle>Recent Transactions</CardTitle>
-                        <CardDescription>Latest billing activity</CardDescription>
+                        <CardTitle className="text-lg font-bold">Recent Transactions</CardTitle>
+                        <CardDescription className="text-xs text-slate-500">Latest billing activity</CardDescription>
                     </div>
                     <div className="flex items-center gap-2">
                         <Filter className="h-4 w-4 text-slate-400" />
@@ -462,21 +461,21 @@ const Dashboard = () => {
                         <Table>
                             <TableHeader>
                                 <TableRow className="bg-slate-50/50 hover:bg-slate-50/50">
-                                    <TableHead>Invoice ID</TableHead>
-                                    <TableHead>Customer</TableHead>
-                                    <TableHead>Date</TableHead>
-                                    <TableHead>Method</TableHead>
-                                    <TableHead>Status</TableHead>
-                                    <TableHead className="text-right">Amount</TableHead>
-                                    <TableHead className="w-[50px]"></TableHead>
+                                    <TableHead className="text-xs h-10">Invoice ID</TableHead>
+                                    <TableHead className="text-xs h-10">Customer</TableHead>
+                                    <TableHead className="text-xs h-10">Date</TableHead>
+                                    <TableHead className="text-xs h-10">Method</TableHead>
+                                    <TableHead className="text-xs h-10">Status</TableHead>
+                                    <TableHead className="text-right text-xs h-10">Amount</TableHead>
+                                    <TableHead className="w-[40px] h-10"></TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {recentOrders.length > 0 ? recentOrders.map((order) => (
-                                    <TableRow key={order.id} className="hover:bg-slate-50 cursor-pointer">
-                                        <TableCell className="font-medium text-slate-700">#{order.id.slice(-6).toUpperCase()}</TableCell>
-                                        <TableCell>{order.customerName || order.customer || 'Walk-in'}</TableCell>
-                                        <TableCell className="text-slate-500 text-xs">
+                                    <TableRow key={order.id} className="hover:bg-slate-50 cursor-pointer h-10">
+                                        <TableCell className="font-semibold text-slate-800 py-1 text-xs">#{order.id.slice(-6).toUpperCase()}</TableCell>
+                                        <TableCell className="py-1 text-xs">{order.customerName || order.customer || 'Walk-in'}</TableCell>
+                                        <TableCell className="text-slate-500 text-[10px] py-1">
                                             {new Date(order.date).toLocaleDateString()}
                                         </TableCell>
                                         <TableCell>
@@ -499,7 +498,7 @@ const Dashboard = () => {
                                     </TableRow>
                                 )) : (
                                     <TableRow>
-                                        <TableCell colSpan={7} className="text-center py-10 text-slate-500">
+                                        <TableCell colSpan={7} className="text-center py-8 text-slate-500 text-xs">
                                             No transactions found
                                         </TableCell>
                                     </TableRow>
