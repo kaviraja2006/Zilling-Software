@@ -609,6 +609,12 @@ const BillingPage = () => {
     };
 
     const handleSavePrint = async (format = '80mm') => {
+        if (!currentBill.customer) {
+            alert("Please select a customer before saving the bill.");
+            setModals(prev => ({ ...prev, customerSearch: true }));
+            return;
+        }
+
         if (currentBill.cart.length === 0) {
             alert("Cart is empty!");
             return;
@@ -616,8 +622,8 @@ const BillingPage = () => {
         try {
             // Prepare payload for backend
             const payload = {
-                customerId: currentBill.customer ? (currentBill.customer.id || currentBill.customer._id) : '',
-                customerName: currentBill.customer ? (currentBill.customer.fullName || currentBill.customer.name || `${currentBill.customer.firstName || ''} ${currentBill.customer.lastName || ''}`.trim()) : 'Walk-in Customer',
+                customerId: currentBill.customer.id || currentBill.customer._id,
+                customerName: currentBill.customer.fullName || currentBill.customer.name || `${currentBill.customer.firstName || ''} ${currentBill.customer.lastName || ''}`.trim(),
                 date: new Date(),
                 items: currentBill.cart
                     .filter(item => (item.id || item._id) && item.quantity > 0) // Ensure valid items
