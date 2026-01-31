@@ -1,121 +1,56 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Drawer } from '../../components/ui/Drawer';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
-import { ShoppingBag, Calendar, Check, AlertCircle, X, Printer, ChevronDown, ChevronUp } from 'lucide-react';
+import { ShoppingBag, Calendar, Check, AlertCircle, Printer, ChevronDown, ChevronUp } from 'lucide-react';
 import services from '../../services/api';
 import { useSettings } from '../../context/SettingsContext';
 import { printReceipt } from '../../utils/printer';
-
-// Indian States
-const INDIAN_STATES = [
-    'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh',
-    'Goa', 'Gujarat', 'Haryana', 'Himachal Pradesh', 'Jharkhand', 'Karnataka',
-    'Kerala', 'Madhya Pradesh', 'Maharashtra', 'Manipur', 'Meghalaya', 'Mizoram',
-    'Nagaland', 'Odisha', 'Punjab', 'Rajasthan', 'Sikkim', 'Tamil Nadu',
-    'Telangana', 'Tripura', 'Uttar Pradesh', 'Uttarakhand', 'West Bengal',
-    'Andaman and Nicobar Islands', 'Chandigarh', 'Dadra and Nagar Haveli and Daman and Diu',
-    'Delhi', 'Jammu and Kashmir', 'Ladakh', 'Lakshadweep', 'Puducherry'
-];
-
-const SOURCE_OPTIONS = ['Walk-in', 'WhatsApp', 'Instagram', 'Referral', 'Other'];
-const TAG_OPTIONS = ['VIP', 'Wholesale', 'Credit'];
-
-// Debounce hook
-const useDebounce = (value, delay) => {
-    const [debouncedValue, setDebouncedValue] = useState(value);
-
-    useEffect(() => {
-        const handler = setTimeout(() => {
-            setDebouncedValue(value);
-        }, delay);
-
-        return () => {
-            clearTimeout(handler);
-        };
-    }, [value, delay]);
-
-    return debouncedValue;
-};
+import CustomerForm from './components/CustomerForm';
+import useCustomerForm from '../../hooks/useCustomerForm';
 
 const CustomerDrawer = ({ isOpen, onClose, customer, onSave, initialTab = 'details' }) => {
     const title = customer ? 'Customer Details' : 'Add New Customer';
     const { settings } = useSettings();
     const [activeTab, setActiveTab] = useState('details');
     const [expandedOrder, setExpandedOrder] = useState(null);
-    const [formData, setFormData] = useState({
-        fullName: '',
-        phone: '',
-        email: '',
-        customerType: 'Individual',
-        gstin: '',
-        address: {
-            street: '',
-            area: '',
-            city: '',
-            pincode: '',
-            state: ''
-        },
-        source: 'Walk-in',
-        tags: [],
-        loyaltyPoints: 0,
-        notes: ''
-    });
+    
+    const {
+        formData,
+        setFormData,
+        validation,
+        touched,
+        handleChange,
+        handleTagToggle,
+        resetForm,
+        isFormValid
+    } = useCustomerForm(customer);
+
     const [orders, setOrders] = useState([]);
     const [loadingOrders, setLoadingOrders] = useState(false);
     const [duplicates, setDuplicates] = useState([]);
     const [searchingDuplicates, setSearchingDuplicates] = useState(false);
-    const [validation, setValidation] = useState({});
-    const [touched, setTouched] = useState({});
 
-    const debouncedPhone = useDebounce(formData.phone, 300);
-    const debouncedEmail = useDebounce(formData.email, 300);
+    // Get debounced values from formData for duplicate search
+    // (Could also move this to hook but keeping here for now as it's specific to this view)
+    const [debouncedPhone, setDebouncedPhone] = useState(formData.phone);
+    const [debouncedEmail, setDebouncedEmail] = useState(formData.email);
 
     useEffect(() => {
-        if (customer) {
-            setFormData({
-                fullName: customer.fullName || `${customer.firstName || ''} ${customer.lastName || ''}`.trim(),
-                phone: customer.phone || '',
-                email: customer.email || '',
-                customerType: customer.customerType || 'Individual',
-                gstin: customer.gstin || '',
-                address: customer.address || {
-                    street: '',
-                    area: '',
-                    city: '',
-                    pincode: '',
-                    state: ''
-                },
-                source: customer.source || 'Walk-in',
-                tags: customer.tags || [],
-                loyaltyPoints: customer.loyaltyPoints || 0,
-                notes: customer.notes || ''
-            });
-        } else {
-            setFormData({
-                fullName: '',
-                phone: '',
-                email: '',
-                customerType: 'Individual',
-                gstin: '',
-                address: {
-                    street: '',
-                    area: '',
-                    city: '',
-                    pincode: '',
-                    state: ''
-                },
-                source: 'Walk-in',
-                tags: [],
-                loyaltyPoints: 0,
-                notes: ''
-            });
+        const h = setTimeout(() => {
+            setDebouncedPhone(formData.phone);
+            setDebouncedEmail(formData.email);
+        }, 300);
+        return () => clearTimeout(h);
+    }, [formData.phone, formData.email]);
+
+    useEffect(() => {
+        if (isOpen) {
+            resetForm(customer);
+            setActiveTab(initialTab || 'details');
+            setDuplicates([]);
         }
-        setActiveTab(initialTab || 'details');
-        setValidation({});
-        setTouched({});
-        setDuplicates([]);
-    }, [customer, isOpen]);
+    }, [customer, isOpen, resetForm, initialTab]);
 
     useEffect(() => {
         if (customer && activeTab === 'history' && isOpen) {
@@ -155,110 +90,16 @@ const CustomerDrawer = ({ isOpen, onClose, customer, onSave, initialTab = 'detai
         searchDuplicates();
     }, [debouncedPhone, debouncedEmail, customer]);
 
-    const handleChange = (e) => {
-        const { name, value } = e.target;
-        if (name.startsWith('address.')) {
-            const addressField = name.split('.')[1];
-            setFormData(prev => ({
-                ...prev,
-                address: { ...prev.address, [addressField]: value }
-            }));
-        } else {
-            setFormData(prev => ({ ...prev, [name]: value }));
-        }
-        setTouched(prev => ({ ...prev, [name]: true }));
-        validateField(name, value);
-    };
-
-    const validateField = (name, value) => {
-        const newValidation = { ...validation };
-
-        switch (name) {
-            case 'fullName':
-                if (!value.trim()) {
-                    newValidation.fullName = { valid: false, message: 'Name is required' };
-                } else {
-                    newValidation.fullName = { valid: true };
-                }
-                break;
-            case 'phone':
-                if (!value.trim()) {
-                    newValidation.phone = { valid: false, message: 'Phone is required' };
-                } else if (!/^\+?[\d\s-]{10,}$/.test(value)) {
-                    newValidation.phone = { valid: false, message: 'Invalid phone format' };
-                } else {
-                    newValidation.phone = { valid: true };
-                }
-                break;
-            case 'email':
-                if (value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
-                    newValidation.email = { valid: false, message: 'Invalid email format' };
-                } else {
-                    newValidation.email = { valid: true };
-                }
-                break;
-            case 'gstin':
-                if (formData.customerType === 'Business' && !value) {
-                    newValidation.gstin = { valid: false, message: 'GSTIN is required for business' };
-                } else if (value && !/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/.test(value)) {
-                    newValidation.gstin = { valid: false, message: 'Invalid GSTIN format' };
-                } else {
-                    newValidation.gstin = { valid: true };
-                }
-                break;
-            default:
-                break;
-        }
-
-        setValidation(newValidation);
-    };
-
-    const handleTagToggle = (tag) => {
-        setFormData(prev => ({
-            ...prev,
-            tags: prev.tags.includes(tag)
-                ? prev.tags.filter(t => t !== tag)
-                : [...prev.tags, tag]
-        }));
-    };
-
     const handleSave = (addAnother = false) => {
-        // Validate required fields
-        if (!formData.fullName || !formData.phone) {
-            alert("Name and Phone are required");
-            return;
-        }
-
-        if (formData.customerType === 'Business' && !formData.gstin) {
-            alert("GSTIN is required for business customers");
+        if (!isFormValid()) {
+            alert("Please fill all required fields correctly.");
             return;
         }
 
         onSave(formData, addAnother);
 
         if (addAnother) {
-            // Reset form for next entry
-            setFormData({
-                fullName: '',
-                phone: '',
-                email: '',
-                customerType: 'Individual',
-                gstin: '',
-                address: {
-                    street: '',
-                    area: '',
-                    city: '',
-                    pincode: '',
-                    state: ''
-                },
-                source: 'Walk-in',
-                tags: [],
-                loyaltyPoints: 0,
-                notes: ''
-            });
-            setValidation({});
-            setTouched({});
-            setDuplicates([]);
+            resetForm();
         }
     };
 
@@ -342,279 +183,14 @@ const CustomerDrawer = ({ isOpen, onClose, customer, onSave, initialTab = 'detai
                                 </div>
                             )}
 
-                            {/* Basic Information */}
-                            <div className="space-y-4">
-                                <h4 className="font-semibold text-slate-900 border-b border-slate-100 pb-2">Basic Information</h4>
-
-                                {/* Customer Type */}
-                                <div className="space-y-2">
-                                    <label className="text-sm font-medium text-slate-700">
-                                        Type <span className="text-red-500">*</span>
-                                    </label>
-                                    <div className="flex gap-4">
-                                        <label className="flex items-center gap-2 cursor-pointer">
-                                            <input
-                                                type="radio"
-                                                name="customerType"
-                                                value="Individual"
-                                                checked={formData.customerType === 'Individual'}
-                                                onChange={handleChange}
-                                                className="w-4 h-4 text-blue-600"
-                                            />
-                                            <span className="text-sm text-slate-700">Individual</span>
-                                        </label>
-                                        <label className="flex items-center gap-2 cursor-pointer">
-                                            <input
-                                                type="radio"
-                                                name="customerType"
-                                                value="Business"
-                                                checked={formData.customerType === 'Business'}
-                                                onChange={handleChange}
-                                                className="w-4 h-4 text-blue-600"
-                                            />
-                                            <span className="text-sm text-slate-700">Business</span>
-                                        </label>
-                                    </div>
-                                    <p className="text-xs text-slate-500">Select customer type for tax purposes</p>
-                                </div>
-
-                                {/* Full Name */}
-                                <div className="space-y-2">
-                                    <label className="text-sm font-medium text-slate-700">
-                                        Full Name <span className="text-red-500">*</span>
-                                    </label>
-                                    <div className="relative">
-                                        <Input
-                                            name="fullName"
-                                            value={formData.fullName}
-                                            onChange={handleChange}
-                                            placeholder="e.g. John Doe"
-                                            className={touched.fullName && validation.fullName && !validation.fullName.valid ? 'border-red-300' : ''}
-                                        />
-                                        <div className="absolute right-3 top-3">
-                                            {getValidationIcon('fullName')}
-                                        </div>
-                                    </div>
-                                    {touched.fullName && validation.fullName && !validation.fullName.valid && (
-                                        <p className="text-xs text-red-600">{validation.fullName.message}</p>
-                                    )}
-                                    <p className="text-xs text-slate-500">Enter customer's full name</p>
-                                </div>
-
-                                {/* Phone & Email */}
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-medium text-slate-700">
-                                            Phone <span className="text-red-500">*</span>
-                                        </label>
-                                        <div className="relative">
-                                            <Input
-                                                name="phone"
-                                                value={formData.phone}
-                                                onChange={handleChange}
-                                                placeholder="+91 98765 43210"
-                                                className={touched.phone && validation.phone && !validation.phone.valid ? 'border-red-300' : ''}
-                                            />
-                                            <div className="absolute right-3 top-3">
-                                                {searchingDuplicates && formData.phone ? (
-                                                    <div className="animate-spin h-4 w-4 border-2 border-blue-600 border-t-transparent rounded-full"></div>
-                                                ) : (
-                                                    getValidationIcon('phone')
-                                                )}
-                                            </div>
-                                        </div>
-                                        {touched.phone && validation.phone && !validation.phone.valid && (
-                                            <p className="text-xs text-red-600">{validation.phone.message}</p>
-                                        )}
-                                        <p className="text-xs text-slate-500">Primary contact number</p>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-medium text-slate-700">Email</label>
-                                        <div className="relative">
-                                            <Input
-                                                name="email"
-                                                type="email"
-                                                value={formData.email}
-                                                onChange={handleChange}
-                                                placeholder="john@example.com"
-                                                className={touched.email && validation.email && !validation.email.valid ? 'border-red-300' : ''}
-                                            />
-                                            <div className="absolute right-3 top-3">
-                                                {searchingDuplicates && formData.email ? (
-                                                    <div className="animate-spin h-4 w-4 border-2 border-blue-600 border-t-transparent rounded-full"></div>
-                                                ) : (
-                                                    getValidationIcon('email')
-                                                )}
-                                            </div>
-                                        </div>
-                                        {touched.email && validation.email && !validation.email.valid && (
-                                            <p className="text-xs text-red-600">{validation.email.message}</p>
-                                        )}
-                                        <p className="text-xs text-slate-500">Optional email address</p>
-                                    </div>
-                                </div>
-
-                                {/* GSTIN (conditional) */}
-                                {formData.customerType === 'Business' && (
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-medium text-slate-700">
-                                            GSTIN <span className="text-red-500">*</span>
-                                        </label>
-                                        <div className="relative">
-                                            <Input
-                                                name="gstin"
-                                                value={formData.gstin}
-                                                onChange={handleChange}
-                                                placeholder="22AAAAA0000A1Z5"
-                                                className={`uppercase ${touched.gstin && validation.gstin && !validation.gstin.valid ? 'border-red-300' : ''}`}
-                                                maxLength={15}
-                                            />
-                                            <div className="absolute right-3 top-3">
-                                                {getValidationIcon('gstin')}
-                                            </div>
-                                        </div>
-                                        {touched.gstin && validation.gstin && !validation.gstin.valid && (
-                                            <p className="text-xs text-red-600">{validation.gstin.message}</p>
-                                        )}
-                                        <p className="text-xs text-slate-500">15-character GST identification number</p>
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* Address */}
-                            <div className="space-y-4">
-                                <h4 className="font-semibold text-slate-900 border-b border-slate-100 pb-2">Address</h4>
-                                <div className="space-y-2">
-                                    <label className="text-sm font-medium text-slate-700">Street</label>
-                                    <Input
-                                        name="address.street"
-                                        value={formData.address.street}
-                                        onChange={handleChange}
-                                        placeholder="House/Flat No., Building Name"
-                                    />
-                                    <p className="text-xs text-slate-500">Building number and street name</p>
-                                </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-medium text-slate-700">Area</label>
-                                        <Input
-                                            name="address.area"
-                                            value={formData.address.area}
-                                            onChange={handleChange}
-                                            placeholder="Locality/Area"
-                                        />
-                                        <p className="text-xs text-slate-500">Neighborhood or locality</p>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-medium text-slate-700">City</label>
-                                        <Input
-                                            name="address.city"
-                                            value={formData.address.city}
-                                            onChange={handleChange}
-                                            placeholder="City"
-                                        />
-                                        <p className="text-xs text-slate-500">City or town name</p>
-                                    </div>
-                                </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-medium text-slate-700">Pincode</label>
-                                        <Input
-                                            name="address.pincode"
-                                            value={formData.address.pincode}
-                                            onChange={handleChange}
-                                            placeholder="400001"
-                                            maxLength={6}
-                                        />
-                                        <p className="text-xs text-slate-500">6-digit postal code</p>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-medium text-slate-700">State</label>
-                                        <select
-                                            name="address.state"
-                                            value={formData.address.state}
-                                            onChange={handleChange}
-                                            className="flex h-10 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-                                        >
-                                            <option value="">Select State</option>
-                                            {INDIAN_STATES.map(state => (
-                                                <option key={state} value={state}>{state}</option>
-                                            ))}
-                                        </select>
-                                        <p className="text-xs text-slate-500">Select from dropdown</p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Source & Tags */}
-                            <div className="space-y-4">
-                                <h4 className="font-semibold text-slate-900 border-b border-slate-100 pb-2">Additional Details</h4>
-
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-medium text-slate-700">Source</label>
-                                        <select
-                                            name="source"
-                                            value={formData.source}
-                                            onChange={handleChange}
-                                            className="flex h-10 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-                                        >
-                                            {SOURCE_OPTIONS.map(source => (
-                                                <option key={source} value={source}>{source}</option>
-                                            ))}
-                                        </select>
-                                        <p className="text-xs text-slate-500">How did they find you?</p>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-medium text-slate-700">Loyalty Points</label>
-                                        <Input
-                                            name="loyaltyPoints"
-                                            type="number"
-                                            value={formData.loyaltyPoints}
-                                            onChange={handleChange}
-                                            placeholder="0"
-                                            min="0"
-                                        />
-                                        <p className="text-xs text-slate-500">Reward points balance</p>
-                                    </div>
-                                </div>
-
-                                <div className="space-y-2">
-                                    <label className="text-sm font-medium text-slate-700">Tags</label>
-                                    <div className="flex gap-2 flex-wrap">
-                                        {TAG_OPTIONS.map(tag => (
-                                            <button
-                                                key={tag}
-                                                type="button"
-                                                onClick={() => handleTagToggle(tag)}
-                                                className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${formData.tags.includes(tag)
-                                                    ? tag === 'VIP' ? 'bg-purple-600 text-white'
-                                                        : tag === 'Wholesale' ? 'bg-blue-600 text-white'
-                                                            : 'bg-orange-600 text-white'
-                                                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                                                    }`}
-                                            >
-                                                {formData.tags.includes(tag) && <Check size={12} className="inline mr-1" />}
-                                                {tag}
-                                            </button>
-                                        ))}
-                                    </div>
-                                    <p className="text-xs text-slate-500">Click to add/remove tags</p>
-                                </div>
-
-                                <div className="space-y-2">
-                                    <label className="text-sm font-medium text-slate-700">Notes</label>
-                                    <textarea
-                                        name="notes"
-                                        value={formData.notes}
-                                        onChange={handleChange}
-                                        placeholder="Additional notes about this customer..."
-                                        rows={3}
-                                        className="flex w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-                                    />
-                                    <p className="text-xs text-slate-500">Any special instructions or preferences</p>
-                                </div>
-                            </div>
+                            {/* Basic Information, Address, Source & Tags handled by CustomerForm */}
+                            <CustomerForm 
+                                initialData={formData}
+                                onChange={handleChange}
+                                validation={validation}
+                                touched={touched}
+                                onTagToggle={handleTagToggle}
+                            />
 
                             {/* Account Summary (for existing customers) */}
                             {customer && (

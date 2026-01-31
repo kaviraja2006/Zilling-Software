@@ -103,22 +103,44 @@ customerSchema.pre('countDocuments', function() {
 // Pre-save hook to auto-generate customerId
 customerSchema.pre('save', async function () {
     if (!this.customerId && this.isNew) {
-        // Generate customerId: CUS-YYYYMMDD-XXXX
-        const date = new Date();
-        const dateStr = date.toISOString().slice(0, 10).replace(/-/g, '');
+        try {
+            const date = new Date();
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            const dateStr = `${year}${month}${day}`;
+            const prefix = `CUS-${dateStr}-`;
 
-        // Find the last customer created today
-        const lastCustomer = await this.constructor.findOne({
-            customerId: new RegExp(`^CUS-${dateStr}-`)
-        }).sort({ customerId: -1 });
+            // Use the native MongoDB collection to bypass all Mongoose middleware (soft-delete)
+            // This is the most reliable way to ensure we see ALL records including deleted ones.
+            const collection = mongoose.connection.db.collection('customers');
+            const lastRecords = await collection.find({
+                customerId: new RegExp(`^${prefix}`)
+            })
+            .sort({ customerId: -1 })
+            .limit(1)
+            .toArray();
 
-        let sequence = 1;
-        if (lastCustomer && lastCustomer.customerId) {
-            const lastSequence = parseInt(lastCustomer.customerId.split('-')[2]);
-            sequence = lastSequence + 1;
+            let sequence = 1;
+            if (lastRecords && lastRecords.length > 0) {
+                const lastId = lastRecords[0].customerId;
+                if (lastId) {
+                    const parts = lastId.split('-');
+                    if (parts.length >= 3) {
+                        const lastSeq = parseInt(parts[2]);
+                        if (!isNaN(lastSeq)) {
+                            sequence = lastSeq + 1;
+                        }
+                    }
+                }
+            }
+
+            this.customerId = `${prefix}${sequence.toString().padStart(4, '0')}`;
+        } catch (error) {
+            console.error('CRITICAL ERROR during customerId generation:', error);
+            // Default to a timestamp-based ID if the sequence logic fails, to prevent a 500 error
+            this.customerId = `CUS-${Date.now()}`;
         }
-
-        this.customerId = `CUS-${dateStr}-${sequence.toString().padStart(4, '0')}`;
     }
 });
 
