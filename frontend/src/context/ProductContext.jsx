@@ -207,6 +207,16 @@ export const ProductProvider = ({ children }) => {
         }
     };
 
+    const bulkDeleteProducts = async (ids) => {
+        try {
+            await services.products.bulkDelete(ids);
+            setProducts(prev => prev.filter(p => !ids.includes(p.id)));
+        } catch (error) {
+            console.error("Failed to bulk delete products", error);
+            throw error;
+        }
+    };
+
     const updateStock = async (id, quantityChange) => {
         // This is tricky as we need to know current stock to update it properly via API if API is "update" style (replace).
         // Better to fetch fresh, update, then save. Or assume local state is consistent.
@@ -229,6 +239,7 @@ export const ProductProvider = ({ children }) => {
             addManyProducts,
             updateProduct,
             deleteProduct,
+            bulkDeleteProducts,
             updateStock,
             getProductByBarcode,
             refreshProducts: fetchProducts,

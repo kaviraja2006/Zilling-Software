@@ -421,6 +421,27 @@ const getProductByVariantBarcode = asyncHandler(async (req, res) => {
     }
 });
 
+const bulkDeleteProducts = asyncHandler(async (req, res) => {
+    const { ids } = req.body;
+
+    if (!ids || ids.length === 0) {
+        res.status(400);
+        throw new Error('No product IDs provided');
+    }
+
+    const operations = ids.map(async (id) => {
+        const product = await Product.findOne({ _id: id, userId: req.user._id });
+        if (product) {
+            product.isDeleted = true;
+            product.deletedAt = new Date();
+            await product.save();
+        }
+    });
+
+    await Promise.all(operations);
+    res.json({ message: 'Selected products deleted successfully' });
+});
+
 module.exports = {
     getProducts,
     getProductById,
@@ -430,5 +451,6 @@ module.exports = {
     restoreProduct,
     fixIndexes,
     getProductStats,
-    getProductByVariantBarcode
+    getProductByVariantBarcode,
+    bulkDeleteProducts
 };

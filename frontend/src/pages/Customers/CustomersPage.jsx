@@ -7,12 +7,13 @@ import CustomerDrawer from './CustomerDrawer';
 import { useCustomers } from '../../context/CustomerContext';
 
 const CustomersPage = () => {
-    const { customers, addCustomer, updateCustomer, deleteCustomer, loading } = useCustomers();
+    const { customers, addCustomer, updateCustomer, deleteCustomer, bulkDeleteCustomers, loading } = useCustomers();
     const [isCustomerDrawerOpen, setIsCustomerDrawerOpen] = useState(false);
     const [selectedCustomer, setSelectedCustomer] = useState(null);
     const [initialTab, setInitialTab] = useState('details');
     const [searchTerm, setSearchTerm] = useState('');
     const [showFilters, setShowFilters] = useState(false);
+    const [selectedIds, setSelectedIds] = useState([]);
     const [filters, setFilters] = useState({
         customerType: '',
         tags: [],
@@ -79,6 +80,31 @@ const CustomersPage = () => {
         }
     };
 
+    const handleBulkDelete = async () => {
+        if (window.confirm(`Are you sure you want to delete ${selectedIds.length} customers?`)) {
+            try {
+                await bulkDeleteCustomers(selectedIds);
+                setSelectedIds([]);
+            } catch (error) {
+                alert('Failed to delete selected customers');
+            }
+        }
+    };
+
+    const toggleSelectAll = () => {
+        if (selectedIds.length === filteredCustomers.length) {
+            setSelectedIds([]);
+        } else {
+            setSelectedIds(filteredCustomers.map(c => c.id));
+        }
+    };
+
+    const toggleSelect = (id) => {
+        setSelectedIds(prev =>
+            prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
+        );
+    };
+
     const toggleFilter = (type, value) => {
         if (type === 'tags') {
             setFilters(prev => ({
@@ -139,9 +165,16 @@ const CustomersPage = () => {
                     <h1 className="text-3xl font-bold text-slate-900">Customers</h1>
                     <p className="text-slate-600 mt-1">Manage your customer relationships</p>
                 </div>
-                <Button onClick={handleAddNew} variant="primary" className="shadow-lg hover:shadow-xl transition-shadow">
-                    <UserPlus className="mr-2 h-4 w-4" /> Add Customer
-                </Button>
+                <div className="flex gap-2">
+                    {selectedIds.length > 0 && (
+                        <Button onClick={handleBulkDelete} variant="outline" className="text-rose-600 border-rose-200 hover:bg-rose-50">
+                            <Trash2 className="mr-2 h-4 w-4" /> Delete ({selectedIds.length})
+                        </Button>
+                    )}
+                    <Button onClick={handleAddNew} variant="primary" className="shadow-lg hover:shadow-xl transition-shadow">
+                        <UserPlus className="mr-2 h-4 w-4" /> Add Customer
+                    </Button>
+                </div>
             </div>
 
             {/* Stats Cards */}
@@ -304,6 +337,14 @@ const CustomersPage = () => {
                 <Table>
                     <TableHeader>
                         <TableRow className="bg-slate-50">
+                            <TableHead className="w-[40px]">
+                                <input
+                                    type="checkbox"
+                                    className="rounded border-slate-300"
+                                    checked={selectedIds.length === filteredCustomers.length && filteredCustomers.length > 0}
+                                    onChange={toggleSelectAll}
+                                />
+                            </TableHead>
                             <TableHead className="font-semibold">Customer</TableHead>
                             <TableHead className="font-semibold">Contact</TableHead>
                             <TableHead className="text-center font-semibold">Type & Tags</TableHead>
@@ -315,7 +356,15 @@ const CustomersPage = () => {
                     </TableHeader>
                     <TableBody>
                         {filteredCustomers.map((customer) => (
-                            <TableRow key={customer.id || customer._id} className="hover:bg-slate-50 transition-colors">
+                            <TableRow key={customer.id || customer._id} className={`hover:bg-slate-50 transition-colors ${selectedIds.includes(customer.id) ? 'bg-blue-50/50' : ''}`}>
+                                <TableCell>
+                                    <input
+                                        type="checkbox"
+                                        className="rounded border-slate-300"
+                                        checked={selectedIds.includes(customer.id)}
+                                        onChange={() => toggleSelect(customer.id)}
+                                    />
+                                </TableCell>
                                 <TableCell className="font-semibold text-slate-900">
                                     {customer.fullName || `${customer.firstName || ''} ${customer.lastName || ''}`.trim()}
                                 </TableCell>

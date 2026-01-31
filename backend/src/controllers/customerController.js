@@ -303,6 +303,27 @@ const searchDuplicates = asyncHandler(async (req, res) => {
     res.json(response);
 });
 
+const bulkDeleteCustomers = asyncHandler(async (req, res) => {
+    const { ids } = req.body;
+
+    if (!ids || ids.length === 0) {
+        res.status(400);
+        throw new Error('No customer IDs provided');
+    }
+
+    const operations = ids.map(async (id) => {
+        const customer = await Customer.findOne({ _id: id, userId: req.user._id });
+        if (customer) {
+            customer.isDeleted = true;
+            customer.deletedAt = new Date();
+            await customer.save();
+        }
+    });
+
+    await Promise.all(operations);
+    res.json({ message: 'Selected customers deleted successfully' });
+});
+
 module.exports = {
     getCustomers,
     getCustomerById,
@@ -311,4 +332,5 @@ module.exports = {
     deleteCustomer,
     restoreCustomer,
     searchDuplicates,
+    bulkDeleteCustomers
 };

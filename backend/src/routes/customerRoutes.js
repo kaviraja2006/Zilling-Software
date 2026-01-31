@@ -8,10 +8,12 @@ const {
     deleteCustomer,
     restoreCustomer,
     searchDuplicates,
+    bulkDeleteCustomers
 } = require('../controllers/customerController');
 const { protect } = require('../middleware/authMiddleware');
 
 router.route('/').get(protect, getCustomers).post(protect, createCustomer);
+router.route('/bulk-delete').post(protect, bulkDeleteCustomers);
 router.route('/search-duplicates').get(protect, searchDuplicates);
 router.route('/:id/restore').post(protect, restoreCustomer);
 router
