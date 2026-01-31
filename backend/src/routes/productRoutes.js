@@ -9,14 +9,16 @@ const {
     restoreProduct,
     fixIndexes,
     getProductStats,
-    getProductByVariantBarcode
+    getProductByVariantBarcode,
+    bulkDeleteProducts
 } = require('../controllers/productController');
 const { protect } = require('../middleware/authMiddleware');
 
-// Temp route to fix indexes - Ensure this is placed BEFORE /:id
+// Temp route to fix indexes
 router.get('/fix-indexes', fixIndexes);
 
 router.route('/').get(protect, getProducts).post(protect, createProduct);
+router.route('/bulk-delete').post(protect, bulkDeleteProducts);
 
 router.get('/:id/stats', protect, getProductStats);
 router.post('/:id/restore', protect, restoreProduct);

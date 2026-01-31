@@ -77,12 +77,23 @@ export const CustomerProvider = ({ children }) => {
         }
     };
 
+    const bulkDeleteCustomers = async (ids) => {
+        try {
+            await services.customers.bulkDelete(ids);
+            setCustomers(prev => prev.filter(c => !ids.includes(c.id)));
+        } catch (error) {
+            console.error("Failed to bulk delete customers", error);
+            throw error;
+        }
+    };
+
     return (
         <CustomerContext.Provider value={{
             customers,
             addCustomer,
             updateCustomer,
             deleteCustomer,
+            bulkDeleteCustomers,
             refreshCustomers: fetchCustomers,
             loading
         }}>    {children}

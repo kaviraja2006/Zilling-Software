@@ -267,21 +267,15 @@ const InvoicesPage = () => {
 
     const renderChart = () => {
         const data = stats.byMethod || [];
-        // Mock trend data if not available from backend
-        const trendData = [
-            { name: 'Mon', sales: stats.summary.totalSales * 0.1 },
-            { name: 'Tue', sales: stats.summary.totalSales * 0.15 },
-            { name: 'Wed', sales: stats.summary.totalSales * 0.2 },
-            { name: 'Thu', sales: stats.summary.totalSales * 0.1 },
-            { name: 'Fri', sales: stats.summary.totalSales * 0.25 },
-            { name: 'Sat', sales: stats.summary.totalSales * 0.15 },
-            { name: 'Sun', sales: stats.summary.totalSales * 0.05 },
-        ];
+        const trendData = stats.salesByDate?.map(item => ({
+            name: new Date(item._id).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric' }),
+            sales: item.sales
+        })) || [];
 
         return (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                 <Card className="p-4 border-none shadow-sm h-48">
-                    <p className="text-xs font-semibold text-slate-500 uppercase mb-2">Sales Trend (Weekly)</p>
+                    <p className="text-xs font-semibold text-slate-500 uppercase mb-2">Sales Trend</p>
                     <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0} debounce={50}>
                         <AreaChart data={trendData}>
                             <defs>
@@ -290,6 +284,9 @@ const InvoicesPage = () => {
                                     <stop offset="95%" stopColor="#8884d8" stopOpacity={0} />
                                 </linearGradient>
                             </defs>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                            <XAxis dataKey="name" tick={{ fontSize: 10 }} />
+                            <YAxis hide />
                             <Tooltip />
                             <Area type="monotone" dataKey="sales" stroke="#8884d8" fillOpacity={1} fill="url(#colorSales)" />
                         </AreaChart>

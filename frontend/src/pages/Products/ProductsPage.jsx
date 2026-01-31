@@ -15,7 +15,7 @@ import { read, utils, writeFile } from 'xlsx';
 import ProductTemplateWizard from './ProductTemplateWizard';
 
 const ProductsPage = () => {
-    const { products, addProduct, addManyProducts, updateProduct, deleteProduct, loading } = useProducts();
+    const { products, addProduct, addManyProducts, updateProduct, deleteProduct, bulkDeleteProducts, loading } = useProducts();
     const { settings } = useSettings();
 
     // UI State
@@ -127,12 +127,14 @@ const ProductsPage = () => {
     };
 
     const handleBulkDelete = async () => {
-        if (window.confirm(`Delete ${selectedRows.size} products?`)) {
-            // Sequential delete for now - ideally backend supports bulk delete
-            for (const id of selectedRows) {
-                await deleteProduct(id);
+        if (window.confirm(`Are you sure you want to delete ${selectedRows.size} products?`)) {
+            try {
+                const ids = Array.from(selectedRows);
+                await bulkDeleteProducts(ids);
+                setSelectedRows(new Set());
+            } catch (error) {
+                alert('Failed to delete selected products');
             }
-            setSelectedRows(new Set());
         }
     };
 
@@ -327,6 +329,16 @@ const ProductsPage = () => {
                                     {isSelectionMode ? (selectedRows.size > 0 ? `Export (${selectedRows.size})` : 'Done Selecting') : 'Select / Export'}
                                 </Button>
 
+                                {selectedRows.size > 0 && (
+                                    <Button
+                                        variant="outline"
+                                        onClick={handleBulkDelete}
+                                        className="text-rose-600 border-rose-200 hover:bg-rose-50 shadow-sm"
+                                    >
+                                        <Trash className="mr-2 h-4 w-4" /> Delete ({selectedRows.size})
+                                    </Button>
+                                )}
+
                                 {/* Professional Add Product Button */}
                                 <Button
                                     onClick={handleAddNew}
@@ -364,7 +376,16 @@ const ProductsPage = () => {
                             <Table>
                                 <TableHeader>
                                     <TableRow className="bg-slate-50 hover:bg-slate-50">
-                                        {isSelectionMode && <TableHead className="w-[40px]"></TableHead>}
+                                        {isSelectionMode && (
+                                            <TableHead className="w-[40px]">
+                                                <input
+                                                    type="checkbox"
+                                                    className="rounded border-slate-300"
+                                                    checked={selectedRows.size === filteredProducts.length && filteredProducts.length > 0}
+                                                    onChange={handleSelectAll}
+                                                />
+                                            </TableHead>
+                                        )}
                                         <TableHead className="min-w-[250px]">Product</TableHead>
                                         <TableHead>Category</TableHead>
                                         <TableHead>Brand</TableHead>

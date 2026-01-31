@@ -72,6 +72,7 @@ const services = {
         create: (data) => api.post('/customers', data),
         update: (id, data) => api.put(`/customers/${id}`, data),
         delete: (id) => api.delete(`/customers/${id}`),
+        bulkDelete: (ids) => api.post('/customers/bulk-delete', { ids }),
         searchDuplicates: (query) => api.get('/customers/search-duplicates', { params: { query } }),
     },
     products: {
@@ -80,6 +81,7 @@ const services = {
         create: (data) => api.post('/products', data),
         update: (id, data) => api.put(`/products/${id}`, data),
         delete: (id) => api.delete(`/products/${id}`),
+        bulkDelete: (ids) => api.post('/products/bulk-delete', { ids }),
         getStats: (id) => api.get(`/products/${id}/stats`),
     },
     billing: {

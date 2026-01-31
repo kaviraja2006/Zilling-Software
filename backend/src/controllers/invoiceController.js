@@ -1,4 +1,5 @@
 const asyncHandler = require('express-async-handler');
+const mongoose = require('mongoose');
 const Invoice = require('../models/invoiceModel');
 const Product = require('../models/productModel');
 const Customer = require('../models/customerModel');
@@ -24,7 +25,7 @@ const getInvoices = asyncHandler(async (req, res) => {
         page = 1
     } = req.query;
 
-    const query = { userId: req.user._id };
+    const query = { userId: req.user._id, isDeleted: { $ne: true } };
 
     // Filter by Customer
     if (customerId) {
@@ -660,17 +661,58 @@ const restoreInvoice = asyncHandler(async (req, res) => {
 
 // Update getInvoiceStats to include payment method breakdown
 const getInvoiceStats = asyncHandler(async (req, res) => {
-    const { startDate, endDate, status } = req.query;
-    const match = { userId: req.user._id };
+    const {
+        search,
+        customerId,
+        startDate,
+        endDate,
+        status,
+        paymentMethod,
+        minAmount,
+        maxAmount
+    } = req.query;
 
+    const match = { userId: req.user._id, isDeleted: { $ne: true } };
+
+    // Filter by Customer
+    if (customerId) {
+        match.customerId = customerId;
+    }
+
+    // Search (ID, Customer Name)
+    if (search) {
+        match.$or = [
+            { customerName: { $regex: search, $options: 'i' } },
+            ...(mongoose.isValidObjectId(search) ? [{ _id: search }] : [])
+        ];
+    }
+
+    // Date Range
     if (startDate || endDate) {
         match.date = {};
         if (startDate) match.date.$gte = new Date(startDate);
         if (endDate) match.date.$lte = new Date(endDate);
     }
 
+    // Status (Support array for multi-select)
     if (status) {
-        match.status = status;
+        if (Array.isArray(status)) {
+            match.status = { $in: status };
+        } else {
+            match.status = { $in: status.split(',') };
+        }
+    }
+
+    // Payment Method
+    if (paymentMethod && paymentMethod !== 'All') {
+        match.paymentMethod = paymentMethod;
+    }
+
+    // Amount Range
+    if (minAmount || maxAmount) {
+        match.total = {};
+        if (minAmount) match.total.$gte = Number(minAmount);
+        if (maxAmount) match.total.$lte = Number(maxAmount);
     }
 
     const stats = await Invoice.aggregate([
@@ -695,9 +737,24 @@ const getInvoiceStats = asyncHandler(async (req, res) => {
         { $group: { _id: '$paymentMethod', totalAmount: { $sum: '$total' }, count: { $sum: 1 } } }
     ]);
 
+    // Get sales trend (e.g., last 14 entries or by date)
+    const salesByDate = await Invoice.aggregate([
+        { $match: match },
+        {
+            $group: {
+                _id: { $dateToString: { format: "%Y-%m-%d", date: "$date" } },
+                sales: { $sum: '$total' }
+            }
+        },
+        { $sort: { _id: -1 } },
+        { $limit: 14 }
+    ]);
+    salesByDate.reverse(); // Reverse to chronological order for the graph
+
     res.json({
         summary: stats[0] || { totalSales: 0, totalInvoices: 0, avgOrderValue: 0, outstandingAmount: 0 },
-        byMethod
+        byMethod,
+        salesByDate
     });
 });
 
