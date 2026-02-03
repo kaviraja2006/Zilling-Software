@@ -121,14 +121,14 @@ const CustomerSearchModal = ({ isOpen, onClose, onSelect }) => {
 
     const handleAddCustomer = async (e) => {
         if (e) e.preventDefault();
-        
+
         if (!formData.fullName || !formData.phone) {
             alert("Name and Phone are required");
             return;
         }
 
-        if (formData.phone.length !== 10) {
-            alert("Phone number must be exactly 10 digits");
+        if (formData.phone.length < 7 || formData.phone.length > 15) {
+            alert("Phone number must be between 7-15 digits");
             return;
         }
 
@@ -143,6 +143,9 @@ const CustomerSearchModal = ({ isOpen, onClose, onSelect }) => {
                 ...formData,
                 phone: `${formData.countryCode}${formData.phone}`
             };
+            // Remove countryCode from payload
+            delete submissionData.countryCode;
+
             const newCustomer = await addCustomer(submissionData);
             onSelect(newCustomer);
             onClose();
@@ -163,7 +166,7 @@ const CustomerSearchModal = ({ isOpen, onClose, onSelect }) => {
                 address: { ...prev.address, [field]: value }
             }));
         } else if (name === 'phone') {
-            const numericValue = value.replace(/[^0-9]/g, '').slice(0, 10);
+            const numericValue = value.replace(/[^0-9]/g, '').slice(0, 15);
             setFormData(prev => ({ ...prev, phone: numericValue }));
         } else {
             setFormData(prev => ({ ...prev, [name]: value }));
@@ -201,7 +204,7 @@ const CustomerSearchModal = ({ isOpen, onClose, onSelect }) => {
                                     onChange={(e) => setSearchTerm(e.target.value)}
                                 />
                             </div>
-                            <Button 
+                            <Button
                                 onClick={() => setView('add')}
                                 className="h-12 px-6 bg-blue-600 hover:bg-blue-700 flex gap-2 items-center text-white font-bold shadow-md"
                             >
@@ -269,8 +272,8 @@ const CustomerSearchModal = ({ isOpen, onClose, onSelect }) => {
                                     </div>
                                     <p className="text-slate-600 font-bold text-xl mb-2">No matching customers</p>
                                     <p className="text-slate-400 mb-6 font-medium">We couldn't find anyone matching your search term.</p>
-                                    <Button 
-                                        variant="outline" 
+                                    <Button
+                                        variant="outline"
                                         onClick={() => setView('add')}
                                         className="text-blue-600 hover:bg-blue-50 border-blue-200 h-12 px-8 font-bold text-lg"
                                     >
@@ -292,7 +295,7 @@ const CustomerSearchModal = ({ isOpen, onClose, onSelect }) => {
                     <form onSubmit={handleAddCustomer} className="flex flex-col h-full max-h-[80vh] overflow-hidden">
                         <div className="flex items-center justify-between gap-4 mb-2 pb-4 border-b border-slate-100 shrink-0">
                             <div className="flex items-center gap-4">
-                                <button 
+                                <button
                                     type="button"
                                     onClick={() => setView('search')}
                                     className="p-2.5 hover:bg-slate-100 rounded-xl transition-colors border border-slate-100 shadow-sm"
@@ -543,16 +546,16 @@ const CustomerSearchModal = ({ isOpen, onClose, onSelect }) => {
                         </div>
 
                         <div className="pt-6 border-t border-slate-100 flex justify-end gap-3 shrink-0">
-                            <Button 
-                                type="button" 
-                                variant="outline" 
+                            <Button
+                                type="button"
+                                variant="outline"
                                 onClick={() => setView('search')}
                                 className="px-8 h-12 border-slate-200 font-extrabold text-slate-500 hover:bg-slate-50"
                             >
                                 BACK TO SEARCH
                             </Button>
-                            <Button 
-                                type="submit" 
+                            <Button
+                                type="submit"
                                 disabled={isSubmitting}
                                 className="px-12 h-12 bg-blue-600 hover:bg-blue-700 text-white font-black shadow-xl shadow-blue-200 transition-all active:scale-95"
                             >

@@ -188,20 +188,6 @@ const SettingsPage = () => {
                                             <label className="text-sm font-medium">GSTIN</label>
                                             <Input className="uppercase font-mono" placeholder="22AAAAA0000A1Z5" value={settings.store.gstin || ''} onChange={(e) => handleChange('store', 'gstin', e.target.value)} />
                                         </div>
-                                        <div className="space-y-2">
-                                            <label className="text-sm font-medium">Default Tax Preference</label>
-                                            <div className="flex bg-slate-100 p-1 rounded-lg">
-                                                {['Inclusive', 'Exclusive'].map(mode => (
-                                                    <button
-                                                        key={mode}
-                                                        onClick={() => handleChange('tax', 'defaultType', mode)}
-                                                        className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-all ${settings.tax.defaultType === mode ? 'bg-white shadow text-indigo-600' : 'text-slate-500'}`}
-                                                    >
-                                                        {mode} (Prices)
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        </div>
                                     </div>
                                 )}
                             </CardContent>
@@ -376,16 +362,16 @@ const SettingsPage = () => {
                     )}
                 </div>
                 <div className="flex gap-2 w-full sm:w-auto">
-                    <Button 
-                        variant="ghost" 
-                        size="sm" 
+                    <Button
+                        variant="ghost"
+                        size="sm"
                         className="flex-1 sm:flex-none text-xs sm:text-sm"
                         onClick={() => window.location.reload()}
                     >
                         <RotateCcw className="h-3 w-3 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" /> Reset
                     </Button>
                     {unsavedChanges && (
-                        <Button 
+                        <Button
                             size="sm"
                             className="flex-1 sm:flex-none bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-200 text-xs sm:text-sm font-bold"
                             onClick={handleSave}

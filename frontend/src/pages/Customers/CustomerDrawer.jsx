@@ -214,8 +214,8 @@ const CustomerDrawer = ({ isOpen, onClose, customer, onSave, initialTab = 'detai
         if (name === 'phone') {
             // Strict number only
             const numericValue = value.replace(/[^0-9]/g, '');
-            // Limit to 10
-            if (numericValue.length > 10) return;
+            // Limit to 15 for international support
+            if (numericValue.length > 15) return;
 
             setFormData(prev => ({ ...prev, phone: numericValue }));
             setTouched(prev => ({ ...prev, phone: true }));
@@ -250,8 +250,8 @@ const CustomerDrawer = ({ isOpen, onClose, customer, onSave, initialTab = 'detai
             case 'phone':
                 if (!value.trim()) {
                     newValidation.phone = { valid: false, message: 'Phone is required' };
-                } else if (value.length !== 10) {
-                    newValidation.phone = { valid: false, message: 'Phone must be exactly 10 digits' };
+                } else if (value.length < 7 || value.length > 15) {
+                    newValidation.phone = { valid: false, message: 'Phone must be between 7-15 digits' };
                 } else {
                     newValidation.phone = { valid: true };
                 }
@@ -295,8 +295,8 @@ const CustomerDrawer = ({ isOpen, onClose, customer, onSave, initialTab = 'detai
             return;
         }
 
-        if (formData.phone.length !== 10) {
-            alert("Phone number must be exactly 10 digits");
+        if (formData.phone.length < 7 || formData.phone.length > 15) {
+            alert("Phone number must be between 7-15 digits");
             return;
         }
 
@@ -310,6 +310,8 @@ const CustomerDrawer = ({ isOpen, onClose, customer, onSave, initialTab = 'detai
             ...formData,
             phone: `${formData.countryCode}${formData.phone}`
         };
+        // Remove countryCode from payload as backend might not expect it (older version on prod)
+        delete finalData.countryCode;
 
         onSave(finalData, addAnother);
 
