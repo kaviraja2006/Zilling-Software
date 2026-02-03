@@ -5,10 +5,12 @@ import { Button } from '../../components/ui/Button';
 import { printReceipt } from '../../utils/printReceipt';
 import { Printer, Loader2 } from 'lucide-react';
 import services from '../../services/api';
+import { useSettings } from '../../context/SettingsContext';
 
 const InvoiceDetailsModal = ({ isOpen, onClose, invoice: initialInvoice }) => {
     const [invoice, setInvoice] = useState(initialInvoice);
     const [loading, setLoading] = useState(false);
+    const { settings } = useSettings();
 
     useEffect(() => {
         if (isOpen && initialInvoice) {
@@ -37,7 +39,7 @@ const InvoiceDetailsModal = ({ isOpen, onClose, invoice: initialInvoice }) => {
     if (!invoice && !loading) return null;
 
     const handlePrint = () => {
-        printReceipt(invoice);
+        printReceipt(invoice, '80mm', settings);
     };
 
     return (

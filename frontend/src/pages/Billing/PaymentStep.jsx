@@ -10,9 +10,11 @@ import { useTransactions } from '../../context/TransactionContext';
 import { useCustomers } from '../../context/CustomerContext';
 import { useProducts } from '../../context/ProductContext';
 import { printReceipt } from '../../utils/printReceipt';
+import { useSettings } from '../../context/SettingsContext';
 
 const PaymentStep = ({ billingData, onComplete }) => {
     const { addTransaction } = useTransactions();
+    const { settings } = useSettings();
     const [method, setMethod] = useState('cash'); // cash, card, upi, split
     const [splitCash, setSplitCash] = useState('');
     const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
@@ -77,7 +79,7 @@ const PaymentStep = ({ billingData, onComplete }) => {
 
     const handlePrint = () => {
         if (currentInvoice) {
-            printReceipt(currentInvoice);
+            printReceipt(currentInvoice, '80mm', settings);
         }
     };
 

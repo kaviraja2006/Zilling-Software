@@ -5,7 +5,7 @@ import { Button } from '../../components/ui/Button';
 import { ShoppingBag, Calendar, Check, AlertCircle, X, Printer, ChevronDown, ChevronUp } from 'lucide-react';
 import services from '../../services/api';
 import { useSettings } from '../../context/SettingsContext';
-import { printReceipt } from '../../utils/printer';
+import { printReceipt } from '../../utils/printReceipt';
 
 // Indian States
 const INDIAN_STATES = [
