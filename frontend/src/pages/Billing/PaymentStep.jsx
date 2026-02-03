@@ -79,7 +79,7 @@ const PaymentStep = ({ billingData, onComplete }) => {
 
     const handlePrint = () => {
         if (currentInvoice) {
-            printReceipt(currentInvoice, '80mm', settings);
+            printReceipt(currentInvoice, '80mm', settings, { type: 'bill' });
         }
     };
 

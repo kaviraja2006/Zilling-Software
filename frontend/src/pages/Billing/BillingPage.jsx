@@ -657,7 +657,7 @@ const BillingPage = () => {
 
             // Print the receipt
             console.log("Printing with Store Settings:", settings);
-            printReceipt(savedBill, format, settings);
+            printReceipt(savedBill, format, settings, { type: 'bill' });
 
             // alert("Bill Saved Successfully!"); // Optional, print dialog is enough feedback? Keep for now.
             closeBill(activeBillId); // Reset/Close after save

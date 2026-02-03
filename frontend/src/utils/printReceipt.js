@@ -1,4 +1,4 @@
-export const printReceipt = (invoice, format = '80mm', settings = {}) => {
+export const printReceipt = (invoice, format = '80mm', settings = {}, options = {}) => {
     if (!invoice) return;
 
     // Destructure Settings with Defaults
@@ -24,9 +24,14 @@ export const printReceipt = (invoice, format = '80mm', settings = {}) => {
     };
 
     const isThermal = format.includes('Thermal') || invoiceSettings.paperSize?.includes('Thermal');
-    const isMinimal = invoiceSettings.template === 'Minimal' && !isThermal;
-    const isGstDetailed = invoiceSettings.template === 'GST-Detailed';
-    const isCompact = invoiceSettings.template === 'Compact' && !isThermal;
+
+    // Determine Render Mode
+    const isBill = options.type === 'bill';
+
+    // Templates apply ONLY if NOT a simple Bill print
+    const isMinimal = !isBill && invoiceSettings.template === 'Minimal' && !isThermal;
+    const isGstDetailed = !isBill && invoiceSettings.template === 'GST-Detailed';
+    const isCompact = !isBill && invoiceSettings.template === 'Compact' && !isThermal;
 
     // Helper: Amount to Words (Mock for now)
     const amountToWords = (amount) => {
@@ -1020,6 +1025,165 @@ export const printReceipt = (invoice, format = '80mm', settings = {}) => {
     `;
     }
 
+
+
+    // ----------------------------------------------------------------------
+    //                           STANDARD BILL STYLES
+    // ----------------------------------------------------------------------
+    const getBillStyles = () => {
+        // Determine effective format
+        // format arg takes precedence, then settings
+        const effectiveFormat = (format || invoiceSettings.paperSize || '80mm').toLowerCase();
+
+        let width = '794px'; // Default A4
+        let padding = '20px';
+        let fontSize = '12px';
+        let headerSize = '18px';
+
+        if (effectiveFormat.includes('58mm')) {
+            width = '180px'; // ~48mm printable
+            padding = '5px';
+            fontSize = '10px';
+            headerSize = '14px';
+        } else if (effectiveFormat.includes('80mm')) {
+            width = '280px'; // ~72mm printable
+            padding = '10px';
+            fontSize = '11px';
+            headerSize = '16px';
+        } else if (effectiveFormat.includes('112mm')) {
+            width = '400px'; // ~104mm printable
+            padding = '15px';
+            fontSize = '12px';
+            headerSize = '18px';
+        } else if (effectiveFormat.includes('a5')) {
+            width = '559px'; // A5 width at 96dpi
+            padding = '20px';
+            fontSize = '12px';
+            headerSize = '20px';
+        } else {
+            // A4 or Default
+            width = '794px';
+            padding = '40px';
+            fontSize = '14px';
+            headerSize = '24px';
+        }
+
+        const baseFont = (effectiveFormat.includes('mm') || effectiveFormat.includes('thermal'))
+            ? "'Courier New', monospace"
+            : "'Inter', sans-serif";
+
+        return `
+            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+            body { 
+                font-family: ${baseFont}; 
+                margin: 0;
+                padding: ${padding};
+                width: ${width}; 
+                color: #000;
+                background: white;
+                font-size: ${fontSize};
+            }
+            .bill-header { text-align: center; margin-bottom: 20px; border-bottom: 1px dashed #000; padding-bottom: 10px; }
+            .store-name { font-size: ${headerSize}; font-weight: bold; text-transform: uppercase; }
+            .store-info { font-size: 11px; margin-top: 5px; }
+            
+            .bill-meta { display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 10px; }
+            .meta-left { text-align: left; }
+            .meta-right { text-align: right; }
+            
+            table { width: 100%; border-collapse: collapse; font-size: 11px; margin-bottom: 1px; }
+            th { text-align: left; border-bottom: 1px dashed #000; padding: 5px 0; }
+            td { padding: 5px 0; }
+            .text-right { text-align: right; }
+            .text-center { text-align: center; }
+            
+            .bill-totals { margin-top: 10px; border-top: 1px dashed #000; padding-top: 5px; font-size: 12px; }
+            .total-row { display: flex; justify-content: space-between; margin-bottom: 4px; }
+            .total-row.final { font-weight: bold; font-size: 14px; border-top: 1px solid #000; padding-top: 5px; margin-top: 5px; }
+            
+            .bill-footer { text-align: center; margin-top: 20px; font-size: 11px; }
+            
+             @media print {
+                .no-print { display: none; }
+                body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            }
+        `;
+    }
+
+    // ----------------------------------------------------------------------
+    //                           STANDARD BILL HTML
+    // ----------------------------------------------------------------------
+    const generateBillHTML = () => {
+        const custName = invoice.customerName || invoice.customer || 'Customer';
+        return `
+            <div class="bill-header">
+                <div class="store-name">${store.name || 'Store Name'}</div>
+                <div class="store-info">
+                    ${getAddressStr(store.address)}<br/>
+                    ${store.contact ? `Ph: ${store.contact}` : ''}
+                    ${store.gstin ? `<br/>GSTIN: ${store.gstin}` : ''}
+                </div>
+            </div>
+            
+            <div class="bill-meta">
+                <div class="meta-left">
+                    Bill No: ${invoice.id}<br/>
+                    Date: ${new Date(invoice.date).toLocaleDateString()}
+                </div>
+                <div class="meta-right">
+                    Customer: ${custName}
+                </div>
+            </div>
+            
+            <table>
+                <thead>
+                    <tr>
+                        <th width="45%">Item</th>
+                        <th class="text-center" width="15%">Qty</th>
+                        <th class="text-right" width="20%">Price</th>
+                        <th class="text-right" width="20%">Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${invoice.items.map(item => `
+                        <tr>
+                            <td>${item.name}</td>
+                            <td class="text-center">${item.quantity}</td>
+                            <td class="text-right">${Number(item.price).toFixed(2)}</td>
+                            <td class="text-right">${Number(item.total).toFixed(2)}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+            
+            <div class="bill-totals">
+                <div class="total-row">
+                    <span>Subtotal</span>
+                    <span>${formatCurrency(invoice.subtotal)}</span>
+                </div>
+                ${invoice.discount > 0 ? `
+                <div class="total-row">
+                    <span>Discount</span>
+                    <span>-${formatCurrency(invoice.discount)}</span>
+                </div>` : ''}
+                ${invoice.tax > 0 ? `
+                <div class="total-row">
+                    <span>Tax</span>
+                    <span>${formatCurrency(invoice.tax)}</span>
+                </div>` : ''}
+                <div class="total-row final">
+                    <span>TOTAL</span>
+                    <span>${formatCurrency(invoice.total)}</span>
+                </div>
+            </div>
+            
+            <div class="bill-footer">
+                Thank you for your visit!<br/>
+                ${store.footer || ''}
+            </div>
+        `;
+    }
+
     // ----------------------------------------------------------------------
     //                           GST DETAILED HTML
     // ----------------------------------------------------------------------
@@ -1193,22 +1357,27 @@ export const printReceipt = (invoice, format = '80mm', settings = {}) => {
             <head>
                 <title>Invoice #${invoice.id}</title>
                 <style>
-                    ${isGstDetailed ? getGstDetailedStyles() :
-            isMinimal ? getMinimalStyles() :
-                isCompact ? getCompactStyles() :
-                    getClassicStyles()}
+                    ${isBill ? getBillStyles() :
+            isGstDetailed ? getGstDetailedStyles() :
+                isMinimal ? getMinimalStyles() :
+                    isCompact ? getCompactStyles() :
+                        getClassicStyles()}
                 </style>
             </head>
             <body>
-                ${isGstDetailed ? generateGstDetailedHTML() :
-            isMinimal ? generateMinimalHTML() :
-                isCompact ? generateCompactHTML() :
-                    generateClassicHTML()}
+                ${isBill ? generateBillHTML() :
+            isGstDetailed ? generateGstDetailedHTML() :
+                isMinimal ? generateMinimalHTML() :
+                    isCompact ? generateCompactHTML() :
+                        generateClassicHTML()}
 
-                <div class="no-print" style="text-align: center; margin-top: 20px; padding: 20px; background: #f9f9f9; border-top: 1px solid #ddd;">
-                    <button onclick="window.print()" style="padding: 10px 20px; background: #2563eb; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">Print Invoice</button>
-                    <button onclick="window.close()" style="padding: 10px 20px; background: #fff; border: 1px solid #ccc; border-radius: 6px; cursor: pointer; margin-left: 10px;">Close</button>
-                </div>
+                <script>
+                    window.onload = function() {
+                        window.print();
+                        // Optional: Close after print (commented out as it can be abrupt)
+                        // window.onafterprint = function() { window.close(); };
+                    }
+                </script>
             </body>
         </html >
     `;
