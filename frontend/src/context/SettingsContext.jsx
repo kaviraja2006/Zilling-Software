@@ -121,6 +121,8 @@ export const SettingsProvider = ({ children }) => {
     const saveSettings = async (newSettings) => {
         try {
             await services.settings.updateSettings(newSettings);
+            // Update local state to reflect changes immediately
+            setSettings(newSettings);
         } catch (error) {
             console.error("Failed to save settings", error);
         }

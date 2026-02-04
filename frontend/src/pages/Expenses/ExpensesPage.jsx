@@ -314,7 +314,7 @@ const ExpensesPage = () => {
                                         {expense.reference || '-'}
                                     </TableCell>
                                     <TableCell className="text-right font-bold text-red-600">
-                                        -${expense.amount.toFixed(2)}
+                                        -₹{expense.amount.toFixed(2)}
                                     </TableCell>
                                     <TableCell className="text-center">
                                         {expense.receiptUrl ? (
@@ -404,7 +404,7 @@ const ExpensesPage = () => {
                                 </div>
                             </div>
                             <div className="text-right">
-                                <p className="font-bold text-red-600">-${expense.amount.toFixed(2)}</p>
+                                <p className="font-bold text-red-600">-₹{expense.amount.toFixed(2)}</p>
                                 <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider">
                                     {expense.category}
                                 </span>

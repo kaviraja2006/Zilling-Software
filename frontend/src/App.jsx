@@ -11,6 +11,7 @@ import Reports from './pages/Reports/ReportsPage';
 import Expenses from './pages/Expenses/ExpensesPage';
 import Settings from './pages/Settings/SettingsPage';
 import BarcodeGenerator from './pages/Barcode/BarcodePage';
+import CompleteProfile from './pages/onboarding/CompleteProfile';
 
 import LoginPage from './pages/Auth/LoginPage';
 import SignupPage from './pages/Auth/SignupPage';
@@ -34,6 +35,14 @@ function App() {
                   <Routes>
                     <Route path="/login" element={<LoginPage />} />
                     <Route path="/signup" element={<SignupPage />} />
+
+                    <Route path="/signup" element={<SignupPage />} />
+
+                    <Route path="/complete-profile" element={
+                      <ProtectedRoute>
+                        <CompleteProfile />
+                      </ProtectedRoute>
+                    } />
 
                     <Route path="/" element={
                       <ProtectedRoute>

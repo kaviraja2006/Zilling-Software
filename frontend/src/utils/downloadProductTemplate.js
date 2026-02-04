@@ -4,10 +4,10 @@ import { utils, writeFile } from 'xlsx';
 export function downloadProductTemplate() {
   // Define the columns and example row
   const headers = [
-    'NAME', 'SKU', 'BARCODE', 'CATEGORY', 'BRAND', 'COST PRICE', 'PRICE', 'STOCK', 'UNIT', 'STATUS'
+    'NAME', 'SKU', 'BARCODE', 'CATEGORY', 'BRAND', 'COST PRICE', 'PRICE', 'STOCK', 'UNIT', 'TAX', 'STATUS'
   ];
   const exampleRow = [
-    'Sample Product', 'SKU123', '1234567890123', 'Beverages', 'BrandX', 50, 100, 50, 'pc', 'Active'
+    'Sample Product', 'SKU123', '1234567890123', 'Beverages', 'BrandX', 50, 100, 50, 'pc', 18, 'Active'
   ];
   // Note: Putting headers on the first row for better compatibility with import parsers
 
@@ -29,6 +29,7 @@ export function downloadProductTemplate() {
     { wch: 10 }, // Price
     { wch: 10 }, // Stock
     { wch: 10 }, // Unit
+    { wch: 10 }, // Tax
     { wch: 10 }  // Status
   ];
 

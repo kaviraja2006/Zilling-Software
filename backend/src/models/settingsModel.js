@@ -112,6 +112,20 @@ const settingsSchema = mongoose.Schema(
             roundingType: { type: String, default: 'Nearest' }, // Nearest, Up, Down, None
         },
 
+        // --- User Profile (from Onboarding) ---
+        user: {
+            fullName: { type: String, default: '' },
+            mobile: { type: String, default: '' },
+            email: { type: String, default: '' },
+            role: { type: String, default: 'Owner' },
+            consent: {
+                analytics: { type: Boolean, default: true },
+                contact: { type: Boolean, default: true }
+            }
+        },
+
+        onboardingCompletedAt: { type: Date, default: null },
+
         lastUpdatedBy: { type: String }, // User name/ID
         lastUpdatedAt: { type: Date },
         // Soft delete fields
@@ -130,15 +144,15 @@ const settingsSchema = mongoose.Schema(
 );
 
 // Query middleware to filter out soft-deleted records
-settingsSchema.pre('find', function() {
+settingsSchema.pre('find', function () {
     this.where({ isDeleted: false });
 });
 
-settingsSchema.pre('findOne', function() {
+settingsSchema.pre('findOne', function () {
     this.where({ isDeleted: false });
 });
 
-settingsSchema.pre('countDocuments', function() {
+settingsSchema.pre('countDocuments', function () {
     this.where({ isDeleted: false });
 });
 

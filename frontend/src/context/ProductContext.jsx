@@ -127,6 +127,7 @@ export const ProductProvider = ({ children }) => {
                 barcode: barcode,
                 sku: barcode,
                 unit: getVal(['unit', 'uom', 'measure', 'units']) || 'pc',
+                taxRate: parseNumber(getVal(['tax', 'tax rate', 'gst', 'vat', 'taxrate'])) || 0,
                 description: getVal(['description', 'desc', 'details', 'specification']) || ''
             };
 
