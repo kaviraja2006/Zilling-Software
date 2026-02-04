@@ -87,6 +87,11 @@ export const CustomerProvider = ({ children }) => {
         }
     };
 
+    const getCustomerByMobile = (mobile) => {
+        // Find in local state
+        return customers.find(c => c.phone === mobile || c.mobile === mobile);
+    };
+
     return (
         <CustomerContext.Provider value={{
             customers,
@@ -95,7 +100,8 @@ export const CustomerProvider = ({ children }) => {
             deleteCustomer,
             bulkDeleteCustomers,
             refreshCustomers: fetchCustomers,
-            loading
+            loading,
+            getCustomerByMobile
         }}>    {children}
         </CustomerContext.Provider>
     );

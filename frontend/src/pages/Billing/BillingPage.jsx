@@ -15,13 +15,14 @@ import { DiscountModal, RemarksModal, AdditionalChargesModal, LoyaltyPointsModal
 import CustomerSearchModal from './components/CustomerSearchModal';
 import QuantityModal from './components/QuantityModal';
 import VariantSelectionModal from './components/VariantSelectionModal';
+import InvoiceDeliveryModal from './components/InvoiceDeliveryModal';
 import { useSettings } from '../../context/SettingsContext';
 
 
 const BillingPage = () => {
     const { addTransaction } = useTransactions();
     const { products, refreshProducts } = useProducts();
-    const { refreshCustomers } = useCustomers();
+    const { refreshCustomers, addCustomer } = useCustomers();
     const { settings } = useSettings();
     const searchInputRef = useRef(null);
 
@@ -84,6 +85,9 @@ const BillingPage = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [focusIndex, setFocusIndex] = useState(-1); // For keyboard navigation in grid
     const [mobileTab, setMobileTab] = useState('items'); // 'items' | 'payment'
+
+    const [invoiceModalOpen, setInvoiceModalOpen] = useState(false);
+    const [lastSavedInvoice, setLastSavedInvoice] = useState(null);
 
     // Save to localStorage whenever bills change
     useEffect(() => {
@@ -169,89 +173,7 @@ const BillingPage = () => {
 
         const isInclusive = settings.tax?.defaultType === 'Inclusive' || settings.tax?.priceMode === 'Inclusive';
 
-        // Calculate line items first
-        cart.forEach(item => {
-            const price = parseFloat(item.price || item.sellingPrice || 0);
-            const qty = parseFloat(item.quantity || 0);
-            const discount = parseFloat(item.discount || 0);
-            const taxRate = parseFloat(item.taxRate || 0);
-
-            // Base Amount (Quantity * Unit Price)
-            let baseAmount = price * qty;
-            let taxAmount = 0;
-
-            if (isInclusive) {
-                // If Inclusive: Price = Base + Tax
-                // Base = Price / (1 + Rate/100)
-                const baseUnitPrice = price / (1 + (taxRate / 100));
-                baseAmount = baseUnitPrice * qty;
-                taxAmount = (price * qty) - baseAmount;
-            } else {
-                // Exclusive: Price is Base. Tax is extra.
-                // Base Amount is already price * qty
-                taxAmount = baseAmount * (taxRate / 100);
-            }
-
-            grossTotal += baseAmount;
-            // Discount applies to the base value usually? 
-            // Standard POS: Discount is usually on selling price (inclusive or exclusive).
-            // Let's assume Discount is a flat reduction on the line total.
-            // If inclusive, we reduce the "Inclusive Total" then back-calculate tax? Complex.
-            // Simplified: Discount reduces the Taxable Amount.
-            // Adjusted Base = Base Amount - Discount
-            // Adjusted Tax = Adjusted Base * Rate / 100
-
-            // To keep simple for now without complex inclusive-discount logic:
-            // We treat discount as post-tax deduction or pre-tax? 
-            // Usually Pre-Tax.
-
-            // Let's stick to simple iterative sum for now matching the existing structure but adding tax.
-
-            // Re-logic for robustness:
-            // 1. Line Total (Qty * Price)
-            // 2. Less Item Discount
-            // 3. Taxable Value = (1) - (2) [If exclusive]
-            // 4. Tax = Taxable * Rate
-
-            // If Inclusive:
-            // 1. Line Total (Inclusive)
-            // 2. Less Discount
-            // 3. Taxable = (Line Total - Discount) / (1 + rate)
-            // 4. Tax = (Line Total - Discount) - Taxable
-
-            const lineTotalRaw = (price * qty);
-            itemDiscount += discount;
-
-            const effectiveTotal = Math.max(0, lineTotalRaw - discount);
-            let taxableValue = effectiveTotal;
-            let lineTax = 0;
-
-            if (isInclusive) {
-                taxableValue = effectiveTotal / (1 + (taxRate / 100));
-                lineTax = effectiveTotal - taxableValue;
-            } else {
-                lineTax = taxableValue * (taxRate / 100);
-            }
-
-            totalTax += lineTax;
-            // Warning: grossTotal definitions vary. Let's set it as Sum of (Price * Qty).
-        });
-
-        // Re-sum gross from scratch for clarity
-        // Let's blindly trust the simple logic:
-        // Gross = Sum(Price * Qty)
-        // Subtotal = Gross - ItemDiscounts
-        // Tax = Calculated above
-        // Total = Subtotal + Tax + Charges - BillDiscount
-
-        // Correction: If Exclusive, Subtotal usually excludes Tax.
-        // If Inclusive, Subtotal includes Tax? No, cleaner to separate.
-
-        // Let's standardize: 
-        // Gross = Sum of (Qty * Unit Price). 
-        // Subtotal = Taxable Value Sum (after item discounts).
-
-        // Refined Loop for aggregates:
+        // Reference loop for aggregates:
         let aggGross = 0;
         let aggItemDisc = 0;
         let aggTax = 0;
@@ -542,8 +464,6 @@ const BillingPage = () => {
         }
     };
 
-
-
     const handleF8 = () => {
         setModals(prev => ({ ...prev, additionalCharges: true }));
     };
@@ -620,15 +540,44 @@ const BillingPage = () => {
             return;
         }
         try {
+            let finalCustomer = currentBill.customer;
+
+            // Handle New Customer Creation
+            if (currentBill.customer.isNew) {
+                console.log("Creating new customer before saving bill...");
+                try {
+                    const newCustomerData = {
+                        fullName: currentBill.customer.name || currentBill.customer.fullName,
+                        phone: currentBill.customer.phone || currentBill.customer.mobile,
+                        address: currentBill.customer.address || {
+                            street: '',
+                            area: '',
+                            city: '',
+                            pincode: '',
+                            state: ''
+                        },
+                    };
+
+                    // Call addCustomer from context
+                    const createdCustomer = await addCustomer(newCustomerData);
+                    finalCustomer = createdCustomer;
+                    console.log("New Customer Created:", finalCustomer);
+                } catch (err) {
+                    console.error("Failed to create new customer:", err);
+                    alert("Failed to create new customer. Bill not saved.");
+                    return;
+                }
+            }
+
             // Prepare payload for backend
             const payload = {
-                customerId: currentBill.customer.id || currentBill.customer._id,
-                customerName: currentBill.customer.fullName || currentBill.customer.name || `${currentBill.customer.firstName || ''} ${currentBill.customer.lastName || ''}`.trim(),
+                customerId: finalCustomer.id || finalCustomer._id,
+                customerName: finalCustomer.fullName || finalCustomer.name || `${finalCustomer.firstName || ''} ${finalCustomer.lastName || ''}`.trim(),
                 date: new Date(),
                 items: currentBill.cart
-                    .filter(item => (item.id || item._id) && item.quantity > 0) // Ensure valid items
+                    .filter(item => (item.id || item._id) && item.quantity > 0)
                     .map(item => ({
-                        productId: item.id || item._id, // Backend expects productId
+                        productId: item.id || item._id,
                         name: item.name,
                         quantity: parseFloat(item.quantity) || 0,
                         price: parseFloat(item.price || item.sellingPrice) || 0,
@@ -643,23 +592,29 @@ const BillingPage = () => {
                 roundOff: parseFloat(currentBill.totals.roundOff) || 0,
                 total: parseFloat(currentBill.totals.total) || 0,
                 paymentMethod: currentBill.paymentMode || 'Cash',
-                status: currentBill.status || 'Paid', // Send status to backend
+                status: currentBill.status || 'Paid',
                 internalNotes: currentBill.remarks || '',
-                amountReceived: parseFloat(currentBill.amountReceived) || 0, // Pass amount received
+                amountReceived: parseFloat(currentBill.amountReceived) || 0,
             };
 
             console.log("Sending Invoice Payload:", payload);
             const savedBill = await addTransaction(payload);
 
-            // Refresh products and customers to update stock and spent totals
             refreshProducts();
             refreshCustomers();
 
-            // Print the receipt
             console.log("Printing with Store Settings:", settings);
             printReceipt(savedBill, format, settings, { type: 'bill' });
 
-            // alert("Bill Saved Successfully!"); // Optional, print dialog is enough feedback? Keep for now.
+            const invoiceForModal = {
+                ...savedBill,
+                customerMobile: finalCustomer.phone || finalCustomer.mobile || '',
+                customerName: finalCustomer.name || finalCustomer.fullName
+            };
+
+            setLastSavedInvoice(invoiceForModal);
+            setInvoiceModalOpen(true);
+
             closeBill(activeBillId); // Reset/Close after save
         } catch (error) {
             console.error("Save Error Details:", error);
@@ -682,9 +637,9 @@ const BillingPage = () => {
         'F12': handleF12,
         'Ctrl+P': handleSavePrint,
         'Control+p': handleSavePrint,
-        'Alt+T': addNewBill,            // Changed from Ctrl+T to avoid browser New Tab conflict
+        'Alt+T': addNewBill,
         'Alt+t': addNewBill,
-        'Alt+W': () => closeBill(activeBillId), // Changed from Ctrl+W to avoid browser Close Tab conflict
+        'Alt+W': () => closeBill(activeBillId),
         'Alt+w': () => closeBill(activeBillId),
         'F11': () => {
             setModals(prev => ({ ...prev, customerSearch: true }));
@@ -753,95 +708,89 @@ const BillingPage = () => {
                         className={`flex-1 py-2 text-sm font-bold rounded-md transition-all ${mobileTab === 'payment' ? 'bg-white shadow text-blue-600' : 'text-slate-500'}`}
                         onClick={() => setMobileTab('payment')}
                     >
-                        Payment (₹{currentBill.totals.total.toFixed(0)})
+                        Payment
                     </button>
                 </div>
 
-                {/* Left Pane - Search & Grid */}
-                <div className={`flex-1 flex flex-col gap-2 bg-transparent ${mobileTab === 'items' ? 'flex' : 'hidden md:flex'}`}>
-                    {/* Item Search Bar */}
-                    <div className="relative z-20">
+                {/* Left Pane - Grid */}
+                <div className={`${mobileTab === 'items' ? 'flex flex-1' : 'hidden md:flex md:w-[65%] lg:w-[70%]'} flex-col border rounded-lg bg-white shadow-sm overflow-hidden`}>
+                    {/* Search Bar */}
+                    <div className="p-3 border-b bg-slate-50 shrink-0">
                         <div className="relative">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-500 h-5 w-5" />
+                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={18} />
                             <Input
                                 ref={searchInputRef}
-                                autoFocus
-                                className="pl-10 h-8 text-sm border-blue-300 focus:border-blue-600 shadow-sm"
-                                placeholder="Scan or search..."
+                                type="text"
+                                placeholder="Search products by name, SKU, or barcode..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
+                                className="w-full pl-10 pr-4 py-2 text-sm border-slate-300 focus:border-blue-500 focus:ring-blue-500"
+                                autoFocus
                             />
+                            {searchTerm && (
+                                <button
+                                    onClick={() => setSearchTerm('')}
+                                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                                >
+                                    <X size={16} />
+                                </button>
+                            )}
                         </div>
-                        {/* Autocomplete Dropdown */}
-                        {searchTerm && filteredProducts.length > 0 && (
-                            <div className="absolute w-full mt-1 bg-white border rounded-md shadow-lg py-1 max-h-60 overflow-y-auto">
-                                {filteredProducts.map(product => (
+                    </div>
+
+                    {/* Filtered Product Overlay (if searching) */}
+                    <div className="relative z-20">
+                        {searchTerm && (
+                            <div className="absolute top-0 left-0 w-full bg-white border-b shadow-lg max-h-[60vh] overflow-y-auto">
+                                {filteredProducts.map(p => (
                                     <div
-                                        key={product.id || product._id}
-                                        className="px-4 py-2 hover:bg-blue-50 cursor-pointer flex justify-between border-b last:border-0"
-                                        onClick={() => addToCart(product)}
+                                        key={p.id || p._id}
+                                        className="p-2 border-b hover:bg-slate-50 cursor-pointer flex justify-between items-center"
+                                        onClick={() => addToCart(p)}
                                     >
                                         <div>
-                                            <span className="font-bold block text-slate-700">{product.name}</span>
-                                            <span className="text-xs text-slate-400">{product.sku} | {product.category}</span>
+                                            <div className="font-bold text-sm">{p.name}</div>
+                                            <div className="text-xs text-slate-500">
+                                                SKU: {p.sku} | Barcode: {p.barcode}
+                                            </div>
                                         </div>
-                                        <div className="text-right">
-                                            <span className="font-medium text-blue-600">₹{product.price || product.sellingPrice}</span>
-                                            <span className="block text-xs text-slate-400">Stock: {product.stock}</span>
+                                        <div className="font-bold text-blue-600">
+                                            ₹{p.price || p.sellingPrice}
                                         </div>
                                     </div>
                                 ))}
+                                {filteredProducts.length === 0 && (
+                                    <div className="p-4 text-center text-slate-500 text-sm">No products found</div>
+                                )}
                             </div>
                         )}
-                    </div>
-
-                    {/* Data Grid */}
-                    <BillingGrid
-                        cart={currentBill.cart}
-                        updateQuantity={updateQuantity}
-                        removeItem={removeItem}
-                        selectedItemId={selectedItemId}
-                        onRowClick={handleRowClick}
-                        onDiscountClick={(id) => {
-                            setSelectedItemId(id);
-                            setModals(prev => ({ ...prev, itemDiscount: true }));
-                        }}
-                    />
-
-                    {/* Mobile Floating Pay Button (only on Items tab) */}
-                    <div className="md:hidden mt-2">
-                        <Button
-                            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold h-12"
-                            onClick={() => setMobileTab('payment')}
-                        >
-                            Proceed to Pay ₹{currentBill.totals.total.toFixed(2)}
-                        </Button>
+                        <BillingGrid
+                            cart={currentBill.cart}
+                            updateQuantity={updateQuantity}
+                            removeItem={removeItem}
+                            selectedItemId={selectedItemId}
+                            onRowClick={handleRowClick}
+                            onDiscountClick={(id) => {
+                                setSelectedItemId(id);
+                                setModals(prev => ({ ...prev, itemDiscount: true }));
+                            }}
+                        />
                     </div>
                 </div>
 
                 {/* Right Pane - Sidebar */}
-                <div className={`${mobileTab === 'payment' ? 'flex flex-1 overflow-auto' : 'hidden md:block'} w-full md:w-auto`}>
+                <div className={`${mobileTab === 'payment' ? 'flex flex-1 overflow-auto' : 'hidden md:block'} w-full md:w-[35%] lg:w-[30%] flex-col gap-2`}>
                     <BillingSidebar
                         customer={currentBill.customer}
-                        onCustomerSearch={(e) => {
-                            if (currentBill.customer) {
-                                if (e === null) {
-                                    updateCurrentBill({ customer: null });
-                                } else {
-                                    setModals(prev => ({ ...prev, customerSearch: true }));
-                                }
-                            } else {
-                                setModals(prev => ({ ...prev, customerSearch: true }));
-                            }
+                        onCustomerChange={(customerData) => {
+                            updateCurrentBill({ customer: customerData });
                         }}
                         totals={currentBill.totals}
                         onPaymentChange={(field, value) => {
                             if (field === 'status') {
-                                // Logic for auto-setting amount received based on status could go here
-                                // e.g., if status is Unpaid, amountReceived = 0
                                 let updates = { status: value };
                                 if (value === 'Unpaid') updates.amountReceived = 0;
-                                if (value === 'Paid') updates.amountReceived = currentBill.totals.total; // Auto-fill full amount? User convenience.
+                                if (value === 'Paid') updates.amountReceived = currentBill.totals.total;
                                 updateCurrentBill(updates);
                             } else {
                                 updateCurrentBill({
@@ -913,6 +862,13 @@ const BillingPage = () => {
                 }}
                 product={selectedProductForVariant}
                 onAddToCart={addVariantToCart}
+            />
+
+            {/* WhatsApp Invoice Delivery Modal */}
+            <InvoiceDeliveryModal
+                isOpen={invoiceModalOpen}
+                onClose={() => setInvoiceModalOpen(false)}
+                invoice={lastSavedInvoice}
             />
 
         </div>
