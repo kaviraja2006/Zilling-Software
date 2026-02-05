@@ -285,16 +285,6 @@ const BillingSidebar = ({
                                     <MessageCircle size={14} />
                                     WhatsApp
                                 </label>
-                                <label className="flex items-center gap-2 cursor-pointer hover:text-blue-600 transition-colors">
-                                    <input
-                                        type="checkbox"
-                                        checked={smsOptIn}
-                                        onChange={handleSmsChange}
-                                        className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                                    />
-                                    <Mail size={14} />
-                                    SMS
-                                </label>
                             </div>
                         </>
                     )}
@@ -351,10 +341,25 @@ const BillingSidebar = ({
                     </div>
 
                     {/* Tax & Rounding */}
+                    {/* Tax & Rounding */}
                     <div className="flex justify-between text-xs text-slate-500 pt-1 border-t border-dashed border-slate-100">
                         <span>Tax: ₹{safeTax.toFixed(2)}</span>
                         <span>Round: {safeRoundOff > 0 ? '+' : ''}{safeRoundOff.toFixed(2)}</span>
                     </div>
+
+                    {/* Tax Breakdown */}
+                    {safeTax > 0 && (
+                        <div className="flex flex-col gap-0.5 pt-1 px-1">
+                            <div className="flex justify-between text-[10px] text-slate-400">
+                                <span>SGST ({((safeTax / (totals.subtotal || 1)) * 50).toFixed(2)}%)</span>
+                                <span>₹{(safeTax / 2).toFixed(2)}</span>
+                            </div>
+                            <div className="flex justify-between text-[10px] text-slate-400">
+                                <span>CGST ({((safeTax / (totals.subtotal || 1)) * 50).toFixed(2)}%)</span>
+                                <span>₹{(safeTax / 2).toFixed(2)}</span>
+                            </div>
+                        </div>
+                    )}
 
                     {/* Grand Total */}
                     <div className="border-t border-slate-100 pt-1 mt-1 flex justify-between items-end">

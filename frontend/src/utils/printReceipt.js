@@ -1170,6 +1170,14 @@ export const printReceipt = (invoice, format = '80mm', settings = {}, options = 
                 <div class="total-row">
                     <span>Tax</span>
                     <span>${formatCurrency(invoice.tax)}</span>
+                </div>
+                <div class="total-row" style="color:#555; font-size:10px;">
+                    <span>SGST (${((invoice.tax / (invoice.subtotal || 1)) * 50).toFixed(2)}%)</span>
+                    <span>${formatCurrency(invoice.tax / 2)}</span>
+                </div>
+                <div class="total-row" style="color:#555; font-size:10px;">
+                    <span>CGST (${((invoice.tax / (invoice.subtotal || 1)) * 50).toFixed(2)}%)</span>
+                    <span>${formatCurrency(invoice.tax / 2)}</span>
                 </div>` : ''}
                 <div class="total-row final">
                     <span>TOTAL</span>
