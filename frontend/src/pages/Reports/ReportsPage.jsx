@@ -143,75 +143,82 @@ const ReportsPage = () => {
     // --- Exports ---
     const handleExport = async (type) => {
         const doc = new jsPDF();
-        const now = new Date();
-        const reportTitle = type === 'summary' ? "Business Performance Summary" : "Detailed Analytics";
-        const dateRangeStr = `Analytics Report (${new Date(dateRange.start).toLocaleDateString()} - ${new Date(dateRange.end).toLocaleDateString()})`;
+        const dateStr = `${new Date(dateRange.start).toLocaleDateString()} - ${new Date(dateRange.end).toLocaleDateString()}`;
 
-        // --- Header Section ---
-        doc.setFontSize(18);
-        doc.setTextColor(15, 23, 42); // slate-900
-        doc.text(settings.store.name || "Store Analytics", 14, 20);
+        // Helper to format currency safe for PDF (avoiding custom font issues)
+        const toCurrency = (val) => `Rs. ${(val || 0).toLocaleString('en-IN')}`;
 
-        doc.setFontSize(9);
-        doc.setTextColor(100, 116, 139); // slate-500
-        const address = [
-            `${settings.store.address?.street || ''} ${settings.store.address?.area || ''}`,
-            `${settings.store.address?.city || ''} ${settings.store.address?.state || ''} ${settings.store.address?.pincode || ''}`
-        ].filter(s => s.trim()).join(', ');
-        doc.text(address, 14, 26);
-        doc.text(`GSTIN: ${settings.store.gstin || 'N/A'}`, 14, 31);
+        // Header
+        doc.setFillColor(79, 70, 229); // Indigo 600
+        doc.rect(0, 0, 210, 20, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(16);
+        doc.text("Business Analytics Report", 14, 13);
 
-        doc.setDrawColor(226, 232, 240); // slate-200
-        doc.line(14, 35, 196, 35);
-
-        // --- Report Title & Date ---
-        doc.setFontSize(14);
-        doc.setFont("helvetica", "bold");
-        doc.setTextColor(15, 23, 42);
-        doc.text(reportTitle, 14, 45);
-
-        doc.setFontSize(11);
-        doc.setFont("helvetica", "normal");
-        doc.setTextColor(51, 65, 85); // slate-700
-        doc.text(dateRangeStr, 14, 52);
-
+        doc.setTextColor(100, 116, 139); // Slate 500
         doc.setFontSize(10);
-        doc.setTextColor(71, 85, 105); // slate-600
-        doc.text(`Exported on: ${now.toLocaleDateString()} at ${now.toLocaleTimeString()}`, 14, 58);
+        doc.text(`Period: ${dateStr}`, 14, 28);
+        doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 33);
 
-        if (type === 'summary') {
-            // Capture Owner View Tiles
-            if (printRef.current) {
-                const canvas = await html2canvas(printRef.current, {
-                    scale: 2,
-                    useCORS: true,
-                    logging: false,
-                    backgroundColor: '#ffffff'
-                });
-                const imgData = canvas.toDataURL('image/png');
-                const imgProps = doc.getImageProperties(imgData);
-                const pdfWidth = doc.internal.pageSize.getWidth() - 28;
-                const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
-                doc.addImage(imgData, 'PNG', 14, 65, pdfWidth, pdfHeight);
-            }
-            doc.save(`Summary_Report_${now.toISOString().split('T')[0]}.pdf`);
-        } else if (type === 'detailed') {
-            autoTable(doc, {
-                startY: 65,
-                head: [['Metric', 'Value', 'Previous', 'Change']],
-                body: [
-                    ['Total Sales', formatCurrency(stats.dashboard.sales.value), formatCurrency(stats.dashboard.sales.prev), formatPercent(stats.dashboard.sales.change)],
-                    ['Net Profit', formatCurrency(stats.dashboard.netProfit.value), formatCurrency(stats.dashboard.netProfit.prev), formatPercent(stats.dashboard.netProfit.change)],
-                    ['Expenses', formatCurrency(stats.dashboard.expenses.value), formatCurrency(stats.dashboard.expenses.prev), formatPercent(stats.dashboard.expenses.change)],
-                    ['Orders', stats.dashboard.orders.value, stats.dashboard.orders.prev, formatPercent(stats.dashboard.orders.change)],
-                ],
-                headStyles: { fillColor: [79, 70, 229], textColor: 255 }, // indigo-600
-                alternateRowStyles: { fillColor: [248, 250, 252] }, // slate-50
-                margin: { left: 14, right: 14 }
-            });
+        let finalY = 40;
 
-            doc.save(`Detailed_Report_${now.toISOString().split('T')[0]}.pdf`);
-        }
+        // 1. Executive Summary Table
+        doc.setTextColor(15, 23, 42); // Slate 900
+        doc.setFontSize(12);
+        doc.text("Executive Summary", 14, finalY);
+
+        autoTable(doc, {
+            startY: finalY + 5,
+            head: [['Metric', 'Value', 'Previous', 'Change']],
+            body: [
+                ['Total Revenue', toCurrency(stats.dashboard.sales.value), toCurrency(stats.dashboard.sales.prev), formatPercent(stats.dashboard.sales.change)],
+                ['Net Profit', toCurrency(stats.dashboard.netProfit.value), toCurrency(stats.dashboard.netProfit.prev), formatPercent(stats.dashboard.netProfit.change)],
+                ['Total Expenses', toCurrency(stats.dashboard.expenses.value), toCurrency(stats.dashboard.expenses.prev), formatPercent(stats.dashboard.expenses.change)],
+                ['Total Orders', stats.dashboard.orders.value, stats.dashboard.orders.prev, formatPercent(stats.dashboard.orders.change)],
+            ],
+            theme: 'grid',
+            headStyles: { fillColor: [79, 70, 229], textColor: 255 },
+            styles: { fontSize: 10, cellPadding: 3 },
+        });
+
+        finalY = doc.lastAutoTable.finalY + 15;
+
+        // 2. Financial Breakdown (Payment Methods)
+        doc.text("Payment Methods Breakdown", 14, finalY);
+        const paymentRows = stats.paymentMethods.map(p => [
+            p.name,
+            toCurrency(p.value),
+            `${((p.value / (stats.dashboard.sales.value || 1)) * 100).toFixed(1)}%`
+        ]);
+
+        autoTable(doc, {
+            startY: finalY + 5,
+            head: [['Method', 'Revenue', 'Share']],
+            body: paymentRows,
+            theme: 'striped',
+            headStyles: { fillColor: [51, 65, 85] }, // Slate 700
+        });
+
+        finalY = doc.lastAutoTable.finalY + 15;
+
+        // 3. Top Products
+        doc.text("Top Performing Products", 14, finalY);
+        const productRows = stats.topProducts.map(p => [
+            p.name,
+            p.quantity,
+            toCurrency(p.revenue),
+            `${p.marginPercent ? p.marginPercent.toFixed(1) : 0}%`
+        ]);
+
+        autoTable(doc, {
+            startY: finalY + 5,
+            head: [['Product Name', 'Sold', 'Revenue', 'Margin']],
+            body: productRows,
+            theme: 'striped',
+            headStyles: { fillColor: [16, 185, 129] }, // Emerald 500
+        });
+
+        doc.save(`Report_${dateRange.start.split('T')[0]}.pdf`);
     };
 
     // --- Components ---
@@ -246,12 +253,12 @@ const ReportsPage = () => {
                         {isMounted && (
                             <ResponsiveContainer width="100%" height="100%">
                                 <AreaChart data={metric.sparkline} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
-                                    <Area 
-                                        type="monotone" 
-                                        dataKey="value" 
-                                        stroke={isPositive ? "#10b981" : "#f43f5e"} 
-                                        fill={isPositive ? "rgba(16, 185, 129, 0.05)" : "rgba(244, 63, 94, 0.05)"} 
-                                        strokeWidth={2} 
+                                    <Area
+                                        type="monotone"
+                                        dataKey="value"
+                                        stroke={isPositive ? "#10b981" : "#f43f5e"}
+                                        fill={isPositive ? "rgba(16, 185, 129, 0.05)" : "rgba(244, 63, 94, 0.05)"}
+                                        strokeWidth={2}
                                     />
                                 </AreaChart>
                             </ResponsiveContainer>

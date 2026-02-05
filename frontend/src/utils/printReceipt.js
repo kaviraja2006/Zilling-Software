@@ -1,4 +1,4 @@
-export const printReceipt = (invoice, format = '80mm', settings = {}, options = {}) => {
+export const getReceiptHTML = (invoice, format = '80mm', settings = {}, options = {}) => {
     if (!invoice) return;
 
     // Destructure Settings with Defaults
@@ -1354,14 +1354,18 @@ export const printReceipt = (invoice, format = '80mm', settings = {}, options = 
 
 
     // --- Main Assembly ---
-    const printWindow = window.open('', '', 'height=800,width=1000');
-    if (!printWindow) {
-        alert('Popups blocked. Please allow.');
-        return;
-    }
+    // --- Main Assembly ---
+    const autoPrintScript = !options.preview ? `
+                <script>
+                    window.onload = function() {
+                        window.print();
+                        // Optional: Close after print (commented out as it can be abrupt)
+                        // window.onafterprint = function() { window.close(); };
+                    }
+                </script>` : '';
 
     const html = `
-    < html >
+    <html>
             <head>
                 <title>Invoice #${invoice.id}</title>
                 <style>
@@ -1378,17 +1382,23 @@ export const printReceipt = (invoice, format = '80mm', settings = {}, options = 
                 isMinimal ? generateMinimalHTML() :
                     isCompact ? generateCompactHTML() :
                         generateClassicHTML()}
-
-                <script>
-                    window.onload = function() {
-                        window.print();
-                        // Optional: Close after print (commented out as it can be abrupt)
-                        // window.onafterprint = function() { window.close(); };
-                    }
-                </script>
+                ${autoPrintScript}
             </body>
-        </html >
+        </html>
     `;
+
+    return html;
+};
+
+export const printReceipt = (invoice, format = '80mm', settings = {}, options = {}) => {
+    const html = getReceiptHTML(invoice, format, settings, options);
+    if (!html) return;
+
+    const printWindow = window.open('', '', 'height=800,width=1000');
+    if (!printWindow) {
+        alert('Popups blocked. Please allow.');
+        return;
+    }
 
     printWindow.document.write(html);
     printWindow.document.close();

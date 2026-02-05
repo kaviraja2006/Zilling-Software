@@ -5,26 +5,90 @@ import { Card, CardContent } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
 import {
     Store, Receipt, Calculator, Printer, Globe, Layout,
-    Save, RotateCcw, Eye, CheckCircle, FileText, User, LogOut
+    Save, RotateCcw, Plus, Trash2, Eye, CheckCircle, FileText, Cloud
 } from 'lucide-react';
 import { useSettings } from '../../context/SettingsContext';
-import { useAuth } from '../../context/AuthContext';
 import { cn } from '../../lib/utils';
 import services from '../../services/api';
+import { getReceiptHTML } from '../../utils/printReceipt';
+import { X } from 'lucide-react';
+
+const LivePreviewModal = ({ isOpen, onClose, settings }) => {
+    if (!isOpen) return null;
+
+    const mockInvoice = {
+        id: 'PRE-2024-001',
+        date: new Date(),
+        customerName: 'Rahul Sharma',
+        customerPhone: '9876543210',
+        customerAddress: '12, M.G. Road, Indiranagar, Bangalore',
+        customerGstin: '29ABCDE1234F1Z5',
+        items: [
+            { name: 'Cotton Polo T-Shirt', quantity: 2, price: 799, total: 1598, taxRate: 5, hsnCode: '6105' },
+            { name: 'Denim Jeans Slim Fit', quantity: 1, price: 1999, total: 1999, taxRate: 12, hsnCode: '6203' },
+            { name: 'Leather Belt', quantity: 1, price: 499, total: 499, taxRate: 18, hsnCode: '4203' }
+        ],
+        subtotal: 4096,
+        discount: 0,
+        taxType: 'Intra-State',
+        tax: 418.66, // Approx tax
+        total: 4514.66,
+        cgst: 209.33,
+        sgst: 209.33
+    };
+
+    const htmlContent = getReceiptHTML(mockInvoice, settings.invoice.paperSize || 'A4', settings, { preview: true });
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+            <div className="bg-white rounded-lg shadow-2xl w-full max-w-5xl h-[90vh] flex flex-col border border-slate-200">
+                <div className="flex justify-between items-center p-4 border-b bg-slate-50 rounded-t-lg">
+                    <div>
+                        <h3 className="font-bold text-lg text-slate-800">Invoice Preview</h3>
+                        <p className="text-xs text-slate-500">Live preview of <b>{settings.invoice.template}</b> template</p>
+                    </div>
+                    <button onClick={onClose} className="p-2 hover:bg-slate-200 rounded-full transition-colors text-slate-500 hover:text-red-500">
+                        <X size={20} />
+                    </button>
+                </div>
+                <div className="flex-1 bg-slate-100/50 p-6 overflow-hidden flex justify-center">
+                    <div className="shadow-lg border bg-white h-full w-full max-w-[850px] overflow-hidden rounded">
+                        <iframe
+                            title="Invoice Preview"
+                            srcDoc={htmlContent}
+                            className="w-full h-full"
+                        />
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
 
 const SettingsPage = () => {
     const { settings, updateSettings, loading } = useSettings();
-    const { user, logout } = useAuth();
     const [activeTab, setActiveTab] = useState('store');
     const [unsavedChanges, setUnsavedChanges] = useState(false);
-    const [showSuccess, setShowSuccess] = useState(false);
+    const [showPreview, setShowPreview] = useState(false);
 
+    // Local state for complex forms (Tax Matrix)
+    const [taxGroups, setTaxGroups] = useState([]);
 
+    // Sync local state when settings load
+    useEffect(() => {
+        if (settings?.tax?.taxGroups) {
+            setTaxGroups(settings.tax.taxGroups);
+        }
+    }, [settings]);
 
     const handleSave = async () => {
-        // Prepare payload
+        // Prepare payload (merge local states like taxGroups back into settings update)
         const payload = {
             ...settings,
+            tax: {
+                ...settings.tax,
+                taxGroups: taxGroups
+            },
             lastUpdatedAt: new Date()
         };
         // Call API manually or via Context if context supports full update
@@ -34,8 +98,6 @@ const SettingsPage = () => {
         try {
             await services.settings.updateSettings(payload);
             setUnsavedChanges(false);
-            setShowSuccess(true);
-            setTimeout(() => setShowSuccess(false), 3000);
             // Re-fetch or Context will auto-update? Assuming context might need refresh.
         } catch (error) {
             console.error("Failed to save settings", error);
@@ -58,15 +120,75 @@ const SettingsPage = () => {
         }
     };
 
+    // Tax Matrix Helpers
+    const addTaxGroup = () => {
+        const newGroup = {
+            id: Date.now().toString(),
+            name: 'New Tax Group',
+            rate: 0,
+            cgst: 0,
+            sgst: 0,
+            igst: 0,
+            active: true
+        };
+        setTaxGroups([...taxGroups, newGroup]);
+        setUnsavedChanges(true);
+    };
 
+    const updateTaxGroup = (id, field, value) => {
+        const updated = taxGroups.map(g => {
+            if (g.id === id) {
+                const updatedGroup = { ...g, [field]: value };
+                // Auto-calc breakdown if rate changes
+                if (field === 'rate') {
+                    const rate = parseFloat(value) || 0;
+                    updatedGroup.igst = rate;
+                    updatedGroup.cgst = rate / 2;
+                    updatedGroup.sgst = rate / 2;
+                }
+                return updatedGroup;
+            }
+            return g;
+        });
+        setTaxGroups(updated);
+        setUnsavedChanges(true);
+    };
+
+    const removeTaxGroup = (id) => {
+        setTaxGroups(taxGroups.filter(g => g.id !== id));
+        setUnsavedChanges(true);
+    };
 
     const tabs = [
         { id: 'store', label: 'Store Profile', icon: Store },
         { id: 'tax', label: 'Tax & GST', icon: Calculator },
         { id: 'invoice', label: 'Invoice Design', icon: Layout },
         { id: 'print', label: 'Printer & Local', icon: Printer },
-        { id: 'account', label: 'Account', icon: User },
+        { id: 'backup', label: 'Data Backup', icon: Cloud },
     ];
+
+    const [backupLoading, setBackupLoading] = useState(false);
+    const [backupStatus, setBackupStatus] = useState(null);
+
+    const handleBackup = async () => {
+        setBackupLoading(true);
+        try {
+            const res = await services.backup.trigger();
+            setBackupStatus({ success: true, timestamp: res.data.timestamp });
+        } catch (err) {
+            // Check for authentication errors
+            const isAuthError = err.response?.status === 401 || err.response?.data?.authRequired;
+            const errorMessage = err.response?.data?.error || err.message;
+
+            setBackupStatus({
+                success: false,
+                error: errorMessage,
+                authRequired: isAuthError
+            });
+        } finally {
+            setBackupLoading(false);
+        }
+    };
 
     if (!settings) return <div className="p-10 flex justifying-center">Loading Settings...</div>;
 
@@ -146,19 +268,59 @@ const SettingsPage = () => {
 
                         <Card>
                             <CardContent className="p-6 space-y-4">
+                                <h3 className="text-lg font-semibold text-slate-800 border-b pb-2 mb-4">Owner / User Profile</h3>
+                                <div className="bg-blue-50 border border-blue-100 rounded-lg p-3 mb-4">
+                                    <p className="text-sm text-blue-800">
+                                        👤 Information about the person using this software (you), not the store.
+                                    </p>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-medium">Full Name</label>
+                                        <Input
+                                            value={settings.user?.fullName || ''}
+                                            onChange={(e) => handleChange('user', 'fullName', e.target.value)}
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-medium">Mobile Number</label>
+                                        <Input
+                                            value={settings.user?.mobile || ''}
+                                            onChange={(e) => handleChange('user', 'mobile', e.target.value)}
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-medium">Email Address</label>
+                                        <Input
+                                            type="email"
+                                            value={settings.user?.email || ''}
+                                            onChange={(e) => handleChange('user', 'email', e.target.value)}
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-medium">Role</label>
+                                        <select
+                                            className="w-full h-10 rounded-md border border-slate-200 px-3 bg-white text-sm focus:ring-2 focus:ring-indigo-500"
+                                            value={settings.user?.role || 'Owner'}
+                                            onChange={(e) => handleChange('user', 'role', e.target.value)}
+                                        >
+                                            <option value="Owner">Owner</option>
+                                            <option value="Manager">Manager</option>
+                                            <option value="Cashier">Cashier</option>
+                                            <option value="Staff">Staff</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        <Card>
+                            <CardContent className="p-6 space-y-4">
                                 <h3 className="text-lg font-semibold text-slate-800 border-b pb-2 mb-4">Statutory Identifiers</h3>
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                     <div className="space-y-2">
                                         <label className="text-sm font-medium">FSSAI License No</label>
-                                        <Input
-                                            value={settings.store.fssai || ''}
-                                            maxLength={14}
-                                            placeholder="14-digit license number"
-                                            onChange={(e) => {
-                                                const val = e.target.value.replace(/\D/g, '').slice(0, 14);
-                                                handleChange('store', 'fssai', val);
-                                            }}
-                                        />
+                                        <Input value={settings.store.fssai || ''} onChange={(e) => handleChange('store', 'fssai', e.target.value)} />
                                     </div>
                                 </div>
                             </CardContent>
@@ -188,12 +350,75 @@ const SettingsPage = () => {
                                             <label className="text-sm font-medium">GSTIN</label>
                                             <Input className="uppercase font-mono" placeholder="22AAAAA0000A1Z5" value={settings.store.gstin || ''} onChange={(e) => handleChange('store', 'gstin', e.target.value)} />
                                         </div>
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-medium">Default Tax Preference</label>
+                                            <div className="flex bg-slate-100 p-1 rounded-lg">
+                                                {['Inclusive', 'Exclusive'].map(mode => (
+                                                    <button
+                                                        key={mode}
+                                                        onClick={() => handleChange('tax', 'defaultType', mode)}
+                                                        className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-all ${settings.tax.defaultType === mode ? 'bg-white shadow text-indigo-600' : 'text-slate-500'}`}
+                                                    >
+                                                        {mode} (Prices)
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
                                     </div>
                                 )}
                             </CardContent>
                         </Card>
 
+                        {/* Tax Matrix Editor */}
+                        <Card>
+                            <CardContent className="p-6">
+                                <div className="flex justify-between items-center mb-4">
+                                    <div>
+                                        <h3 className="text-lg font-semibold text-slate-800">Tax Matrix</h3>
+                                        <p className="text-sm text-slate-500">Define tax slabs used in products</p>
+                                    </div>
+                                    <Button size="sm" onClick={addTaxGroup} variant="outline"><Plus className="h-4 w-4 mr-2" /> Add Group</Button>
+                                </div>
 
+                                <div className="overflow-x-auto border rounded-xl">
+                                    <table className="w-full text-sm text-left">
+                                        <thead className="bg-slate-50 text-slate-600 font-medium">
+                                            <tr>
+                                                <th className="px-4 py-3">Group Name</th>
+                                                <th className="px-4 py-3 w-24">Rate (%)</th>
+                                                <th className="px-4 py-3 w-24">CGST</th>
+                                                <th className="px-4 py-3 w-24">SGST</th>
+                                                <th className="px-4 py-3 w-24">IGST</th>
+                                                <th className="px-4 py-3 w-16">Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-100">
+                                            {taxGroups.map((group) => (
+                                                <tr key={group.id} className="group hover:bg-slate-50/50">
+                                                    <td className="px-4 py-2">
+                                                        <Input className="h-8" value={group.name} onChange={(e) => updateTaxGroup(group.id, 'name', e.target.value)} />
+                                                    </td>
+                                                    <td className="px-4 py-2">
+                                                        <Input className="h-8" type="number" value={group.rate} onChange={(e) => updateTaxGroup(group.id, 'rate', e.target.value)} />
+                                                    </td>
+                                                    <td className="px-4 py-2 text-slate-500">{group.cgst}%</td>
+                                                    <td className="px-4 py-2 text-slate-500">{group.sgst}%</td>
+                                                    <td className="px-4 py-2 text-slate-500">{group.igst}%</td>
+                                                    <td className="px-4 py-2">
+                                                        <button onClick={() => removeTaxGroup(group.id)} className="text-rose-400 hover:text-rose-600 transition-colors p-1">
+                                                            <Trash2 size={16} />
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                            {taxGroups.length === 0 && (
+                                                <tr><td colSpan="6" className="text-center py-6 text-slate-400">No tax groups defined. Add one to get started.</td></tr>
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </CardContent>
+                        </Card>
                     </div>
                 );
 
@@ -229,7 +454,43 @@ const SettingsPage = () => {
                         </Card>
 
                         {/* Visual Toggles Grid */}
-
+                        <Card>
+                            <CardContent className="p-6">
+                                <div className="flex justify-between items-center mb-4">
+                                    <h3 className="text-lg font-semibold text-slate-800">Visual Options</h3>
+                                    <Button variant="ghost" size="sm" className="text-indigo-600" onClick={() => setShowPreview(true)}><Eye className="h-4 w-4 mr-2" /> Live Preview (Beta)</Button>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-y-4 gap-x-8">
+                                    {[
+                                        { key: 'showLogo', label: 'Show Store Logo' },
+                                        { key: 'showWatermark', label: 'Show Watermark' },
+                                        { key: 'showStoreAddress', label: 'Show Store Address' },
+                                        { key: 'showTaxBreakup', label: 'Tax Breakup Table' },
+                                        { key: 'showHsn', label: 'HSN/SAC Codes' },
+                                        { key: 'showMrp', label: 'Show MRP vs Selling' },
+                                        { key: 'showSavings', label: 'Savings Highlight' },
+                                        { key: 'showCustomerGstin', label: 'Customer GSTIN' },
+                                        { key: 'showQrcode', label: 'UPI QR Code' },
+                                        { key: 'showTerms', label: 'Terms & Conditions' },
+                                        { key: 'showLoyaltyPoints', label: 'Loyalty Points' },
+                                        { key: 'showSignature', label: 'Auth. Signature Box' }
+                                    ].map(opt => (
+                                        <div key={opt.key} className="flex items-center justify-between group">
+                                            <span className="text-slate-600 text-sm group-hover:text-slate-900 transition-colors">{opt.label}</span>
+                                            <label className="relative inline-flex items-center cursor-pointer">
+                                                <input
+                                                    type="checkbox"
+                                                    className="sr-only peer"
+                                                    checked={settings.invoice[opt.key]}
+                                                    onChange={(e) => handleChange('invoice', opt.key, e.target.checked)}
+                                                />
+                                                <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"></div>
+                                            </label>
+                                        </div>
+                                    ))}
+                                </div>
+                            </CardContent>
+                        </Card>
 
                         <Card>
                             <CardContent className="p-6 space-y-4">
@@ -275,7 +536,6 @@ const SettingsPage = () => {
                                             <option value="A5">A5 (Half Page)</option>
                                             <option value="Thermal-3inch">Thermal 3 Inch (80mm)</option>
                                             <option value="Thermal-2inch">Thermal 2 Inch (58mm)</option>
-                                            <option value="112mm">Thermal 112mm</option>
                                         </select>
                                     </div>
                                     <div className="space-y-2">
@@ -293,52 +553,80 @@ const SettingsPage = () => {
                                     </div>
                                     <div className="space-y-2">
                                         <label className="text-sm font-medium">Currency</label>
-                                        <select
-                                            className="w-full h-10 rounded-md border border-slate-200 px-3 bg-white text-sm"
-                                            value={settings.defaults.currency || '₹'}
-                                            onChange={(e) => handleChange('defaults', 'currency', e.target.value)}
-                                        >
-                                            <option value="₹">Indian Rupee (₹)</option>
-                                            <option value="$">USA Dollar ($)</option>
-                                        </select>
+                                        <Input value={settings.defaults.currency || ''} onChange={(e) => handleChange('defaults', 'currency', e.target.value)} />
                                     </div>
                                 </div>
                             </CardContent>
                         </Card>
                     </div>
                 );
-            case 'account':
-                const userName = user?.name || 'User';
-                const userEmail = user?.email || '';
-                const userInitials = userName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
-
+            case 'backup':
                 return (
                     <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
                         <Card>
                             <CardContent className="p-6 space-y-6">
-                                <h3 className="text-lg font-semibold text-slate-800 border-b pb-2">Account Details</h3>
                                 <div className="flex items-center gap-4">
-                                    <div className="h-16 w-16 overflow-hidden rounded-full bg-indigo-600 border-4 border-white shadow-md flex items-center justify-center text-white font-bold text-xl">
-                                        {userInitials}
+                                    <div className="p-3 bg-emerald-50 rounded-full">
+                                        <Cloud className="h-6 w-6 text-emerald-600" />
                                     </div>
                                     <div>
-                                        <h2 className="text-xl font-bold text-slate-900">{userName}</h2>
-                                        <p className="text-slate-500">{userEmail}</p>
-                                        <Badge className="mt-1 bg-indigo-50 text-indigo-700 border-indigo-100">{user?.role || 'Manager'}</Badge>
+                                        <h3 className="text-lg font-semibold text-slate-800">Google Drive Backup</h3>
+                                        <p className="text-sm text-slate-500">
+                                            Your data is automatically backed up to your Google Drive in the
+                                            <code className="mx-1 bg-slate-100 px-1 rounded text-xs">/BillingSoftware</code> folder.
+                                        </p>
                                     </div>
                                 </div>
 
-                                <div className="pt-4 border-t">
-                                    <h4 className="text-sm font-medium text-slate-700 mb-3">Session Management</h4>
-                                    <Button
-                                        onClick={logout}
-                                        variant="destructive"
-                                        className="w-full sm:w-auto bg-rose-50 text-rose-600 border border-rose-200 hover:bg-rose-100 hover:border-rose-300 shadow-sm"
-                                    >
-                                        <LogOut className="h-4 w-4 mr-2" />
-                                        Log Out
-                                    </Button>
-                                    <p className="text-xs text-slate-400 mt-2">This will end your current session.</p>
+                                <div className="border-t pt-4">
+                                    <h4 className="font-medium text-slate-700 mb-2">Backup Status</h4>
+                                    <div className="bg-slate-50 p-4 rounded-lg border border-slate-200 flex justify-between items-center">
+                                        <div>
+                                            <p className="text-sm font-medium text-slate-800">
+                                                {backupStatus?.success
+                                                    ? "Last Backup Successful"
+                                                    : "System Ready"}
+                                            </p>
+                                            <p className="text-xs text-slate-500">
+                                                {backupStatus?.timestamp
+                                                    ? new Date(backupStatus.timestamp).toLocaleString()
+                                                    : "Automatic mode active"}
+                                            </p>
+                                        </div>
+                                        <Button
+                                            onClick={handleBackup}
+                                            disabled={backupLoading}
+                                            variant="outline"
+                                            className="border-indigo-200 text-indigo-700 hover:bg-indigo-50"
+                                        >
+                                            {backupLoading ? "Backing up..." : "Backup Now"}
+                                        </Button>
+                                    </div>
+                                    {backupStatus?.success === false && (
+                                        <div className="mt-3 p-3 bg-rose-50 border border-rose-200 rounded-lg">
+                                            <p className="text-sm font-medium text-rose-800">
+                                                {backupStatus.authRequired ? '⚠️ Authentication Required' : '❌ Backup Failed'}
+                                            </p>
+                                            <p className="text-xs text-rose-600 mt-1">
+                                                {backupStatus.error || "Check internet connection or re-login."}
+                                            </p>
+                                            {backupStatus.authRequired && (
+                                                <p className="text-xs text-rose-700 mt-2 font-medium">
+                                                    → Please log out and log back in to restore backup functionality.
+                                                </p>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="bg-blue-50 p-4 rounded-lg flex gap-3 text-sm text-blue-800">
+                                    <CheckCircle className="h-5 w-5 flex-shrink-0" />
+                                    <div>
+                                        <p className="font-semibold">Local-First Security</p>
+                                        <p className="opacity-90 mt-1">
+                                            Your main database is always on this computer. Google Drive only holds encrypted JSON copies for emergency recovery.
+                                        </p>
+                                    </div>
                                 </div>
                             </CardContent>
                         </Card>
@@ -352,69 +640,62 @@ const SettingsPage = () => {
     return (
         <div className="min-h-screen bg-slate-50/50 pb-20">
             {/* Header */}
-            <div className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-slate-200 px-4 sm:px-6 py-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <div className="flex items-center gap-3">
+            <div className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-slate-200 px-4 sm:px-6 py-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                <div className="flex items-center gap-3 flex-wrap">
                     <h1 className="text-xl sm:text-2xl font-bold text-slate-900">Settings</h1>
+                    {settings.onboardingCompletedAt && (
+                        <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                            Profile completed on {new Date(settings.onboardingCompletedAt).toLocaleDateString()}
+                        </Badge>
+                    )}
                     {unsavedChanges && (
-                        <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 animate-pulse text-[10px] sm:text-xs">
+                        <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 animate-pulse">
                             Unsaved Changes
                         </Badge>
                     )}
                 </div>
                 <div className="flex gap-2 w-full sm:w-auto">
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        className="flex-1 sm:flex-none text-xs sm:text-sm"
-                        onClick={() => window.location.reload()}
-                    >
-                        <RotateCcw className="h-3 w-3 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" /> Reset
+                    <Button variant="ghost" onClick={() => window.location.reload()} className="flex-1 sm:flex-none"><RotateCcw className="h-4 w-4 mr-2" /> Reset</Button>
+                    <Button onClick={handleSave} className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-200 flex-1 sm:flex-none">
+                        <Save className="h-4 w-4 mr-2" /> Save Changes
                     </Button>
-                    {unsavedChanges && (
-                        <Button
-                            size="sm"
-                            className="flex-1 sm:flex-none bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-200 text-xs sm:text-sm font-bold"
-                            onClick={handleSave}
-                        >
-                            <Save className="h-3 w-3 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" /> Save Changes
-                        </Button>
-                    )}
                 </div>
             </div>
 
-            <div className="flex flex-col lg:flex-row max-w-7xl mx-auto pt-6 px-4 sm:px-6 gap-6 lg:gap-8">
+            <div className="flex flex-col lg:flex-row max-w-7xl mx-auto pt-8 px-4 sm:px-6 gap-8">
                 {/* Sidebar Navigation */}
-                <div className="flex lg:flex-col lg:w-64 flex-shrink-0 gap-1 overflow-x-auto pb-2 lg:pb-0 no-scrollbar">
-                    {tabs.map(tab => (
-                        <button
-                            key={tab.id}
-                            onClick={() => setActiveTab(tab.id)}
-                            className={`
-                                flex-shrink-0 flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2 sm:py-3 rounded-xl text-xs sm:text-sm font-medium transition-all
-                                ${activeTab === tab.id
-                                    ? 'bg-white text-indigo-600 shadow-sm ring-1 ring-slate-200'
-                                    : 'text-slate-500 hover:bg-slate-100/80 hover:text-slate-900'}
-                            `}
-                        >
-                            <tab.icon size={16} className="sm:w-[18px] sm:h-[18px]" />
-                            <span className="whitespace-nowrap">{tab.label}</span>
-                        </button>
-                    ))}
+                <div className="w-full lg:w-64 flex-shrink-0">
+                    <div className="flex flex-row lg:flex-col gap-2 overflow-x-auto lg:overflow-visible pb-2 lg:pb-0">
+                        {tabs.map(tab => (
+                            <button
+                                key={tab.id}
+                                onClick={() => setActiveTab(tab.id)}
+                                className={`
+                                    flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all whitespace-nowrap
+                                    ${activeTab === tab.id
+                                        ? 'bg-white text-indigo-600 shadow-sm ring-1 ring-slate-200'
+                                        : 'text-slate-500 hover:bg-slate-100/80 hover:text-slate-900'}
+                                `}
+                            >
+                                <tab.icon size={18} />
+                                {tab.label}
+                            </button>
+                        ))}
+                    </div>
+
+                    <div className="hidden lg:block pt-8 px-4">
+                        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">System</p>
+                        <p className="text-xs text-slate-400">Version 2.4.0 (Build 2024.1)</p>
+                        <p className="text-xs text-slate-400 mt-1">Last Updated: {settings.lastUpdatedAt ? new Date(settings.lastUpdatedAt).toLocaleDateString() : 'Never'}</p>
+                    </div>
                 </div>
 
                 {/* Main Content Area */}
-                <div className="flex-1 min-w-0">
+                <div className="flex-1">
                     {renderTabContent()}
                 </div>
             </div>
-
-            {/* Success Toast */}
-            {showSuccess && (
-                <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-emerald-600 text-white px-6 py-3 rounded-full shadow-xl flex items-center gap-2 animate-in slide-in-from-bottom-5 duration-300 z-50">
-                    <CheckCircle className="h-5 w-5" />
-                    <span className="font-medium">Settings saved successfully!</span>
-                </div>
-            )}
+            <LivePreviewModal isOpen={showPreview} onClose={() => setShowPreview(false)} settings={settings} />
         </div>
     );
 };
